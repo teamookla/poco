@@ -182,7 +182,7 @@
 
 // Disable the use of Poco OpenSSL binaries
 // (external OpenSSL libraries must be provided).
-// #define POCO_EXTERNAL_OPENSSL
+#define POCO_EXTERNAL_OPENSSL
 
 //
 // End OpenSSL options
