@@ -46,6 +46,7 @@ namespace Net {
 
 SocketImpl::SocketImpl():
 	_sockfd(POCO_INVALID_SOCKET),
+	_peekBytesRemaining(0),
 	_blocking(true)
 {
 }
@@ -53,6 +54,7 @@ SocketImpl::SocketImpl():
 
 SocketImpl::SocketImpl(poco_socket_t sockfd):
 	_sockfd(sockfd),
+	_peekBytesRemaining(0),
 	_blocking(true)
 {
 }
@@ -281,6 +283,11 @@ int SocketImpl::sendBytes(const void* buffer, int length, int flags)
 	return rc;
 }
 
+int SocketImpl::peekBytes(void* buffer, int length, int flags) const
+{
+	return ((SocketImpl*)this)->receiveBytes(buffer, length, flags | MSG_PEEK);
+}
+
 
 int SocketImpl::receiveBytes(void* buffer, int length, int flags)
 {
@@ -308,6 +315,10 @@ int SocketImpl::receiveBytes(void* buffer, int length, int flags)
 			throw TimeoutException(err);
 		else
 			error(err);
+	} else if (flags & MSG_PEEK) {
+		_peekBytesRemaining = rc;
+	} else if (_peekBytesRemaining > 0) {
+		_peekBytesRemaining -= std::max(rc, _peekBytesRemaining);
 	}
 	return rc;
 }
@@ -396,6 +407,10 @@ bool SocketImpl::poll(const Poco::Timespan& timeout, int mode)
 {
 	poco_socket_t sockfd = _sockfd;
 	if (sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
+
+	if (mode & SELECT_READ && _peekBytesRemaining > 0) {
+		return true;
+	}
 
 #if defined(POCO_HAVE_FD_EPOLL)
 

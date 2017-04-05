@@ -136,6 +136,8 @@ public:
 		/// Certain socket implementations may also return a negative
 		/// value denoting a certain condition.
 	
+	virtual int peekBytes(void* buffer, int length, int flags = 0) const;
+
 	virtual int receiveBytes(void* buffer, int length, int flags = 0);
 		/// Receives data from the socket and stores it
 		/// in buffer. Up to length bytes are received.
@@ -421,6 +423,7 @@ private:
 	SocketImpl& operator = (const SocketImpl&);
 	
 	poco_socket_t _sockfd;
+	int _peekBytesRemaining;
 #if defined(POCO_BROKEN_TIMEOUTS)
 	Poco::Timespan _recvTimeout;
 	Poco::Timespan _sndTimeout;

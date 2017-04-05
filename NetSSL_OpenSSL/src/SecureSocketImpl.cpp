@@ -15,6 +15,7 @@
 
 
 #include "Poco/Net/SecureSocketImpl.h"
+#include "Poco/Net/SocketImpl.h"
 #include "Poco/Net/SSLException.h"
 #include "Poco/Net/Context.h"
 #include "Poco/Net/X509Certificate.h"
@@ -51,7 +52,8 @@ SecureSocketImpl::SecureSocketImpl(Poco::AutoPtr<SocketImpl> pSocketImpl, Contex
 	_pSSL(0),
 	_pSocket(pSocketImpl),
 	_pContext(pContext),
-	_needHandshake(false)
+	_needHandshake(false),
+	_peekBytesRemaining(0)
 {
 	poco_check_ptr (_pSocket);
 	poco_check_ptr (_pContext);
@@ -250,6 +252,15 @@ void SecureSocketImpl::close()
 }
 
 
+bool SecureSocketImpl::poll(const Poco::Timespan& timeout, int mode)
+{
+	if (mode & SocketImpl::SELECT_READ && _peekBytesRemaining > 0)
+	{
+		return true;
+	}
+	return _pSocket->poll(timeout, mode);
+}
+
 int SecureSocketImpl::sendBytes(const void* buffer, int length, int flags)
 {
 	poco_assert (_pSocket->initialized());
@@ -280,6 +291,12 @@ int SecureSocketImpl::sendBytes(const void* buffer, int length, int flags)
 }
 
 
+int SecureSocketImpl::peekBytes(void* buffer, int length, int flags)
+{
+	return receiveBytes(buffer, length, flags | MSG_PEEK);
+}
+
+
 int SecureSocketImpl::receiveBytes(void* buffer, int length, int flags)
 {
 	poco_assert (_pSocket->initialized());
@@ -296,7 +313,16 @@ int SecureSocketImpl::receiveBytes(void* buffer, int length, int flags)
 	}
 	do
 	{
-		rc = SSL_read(_pSSL, buffer, length);
+		if (flags & MSG_PEEK) {
+			rc = SSL_peek(_pSSL, buffer, length);
+			_peekBytesRemaining = rc;
+		}
+		else {
+			rc = SSL_read(_pSSL, buffer, length);
+			if (_peekBytesRemaining > 0) {
+				_peekBytesRemaining -= std::max(rc, _peekBytesRemaining);
+			}
+		}
 	}
 	while (mustRetry(rc));
 	if (rc <= 0) 
