@@ -120,7 +120,7 @@ public:
 		/// In this case, the return value may be greater than the sum
 		/// of all sockets in all list.
 
-	bool poll(const Poco::Timespan& timeout, int mode) const;
+	virtual bool poll(const Poco::Timespan& timeout, int mode) const;
 		/// Determines the status of the socket, using a 
 		/// call to poll() or select().
 		/// 
@@ -406,12 +406,6 @@ inline bool Socket::operator >= (const Socket& socket) const
 inline void Socket::close()
 {
 	_pImpl->close();
-}
-
-
-inline bool Socket::poll(const Poco::Timespan& timeout, int mode) const
-{
-	return _pImpl->poll(timeout, mode);
 }
 
 
