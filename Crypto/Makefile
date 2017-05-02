@@ -8,7 +8,7 @@
 
 include $(POCO_BASE)/build/rules/global
 
-SYSLIBS += -lssl -lcrypto
+SYSLIBS += -l$(POCO_SSL_LIB) -l$(POCO_CRYPTO_LIB)
 
 objects = Cipher CipherFactory CipherImpl CipherKey CipherKeyImpl CryptoStream CryptoTransform \
 	RSACipherImpl RSAKey RSAKeyImpl RSADigestEngine DigestEngine \
