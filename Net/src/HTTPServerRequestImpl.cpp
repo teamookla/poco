@@ -107,6 +107,12 @@ StreamSocket HTTPServerRequestImpl::detachSocket()
 }
 
 
+int HTTPServerRequestImpl::readBytes(char* buffer, std::streamsize length)
+{
+	return _session.read(buffer, length);
+}
+
+
 bool HTTPServerRequestImpl::expectContinue() const
 {
 	const std::string& expect = get(EXPECT, EMPTY);

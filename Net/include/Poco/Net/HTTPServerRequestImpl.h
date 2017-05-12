@@ -67,6 +67,10 @@ public:
 		/// The stream is valid until the HTTPServerRequestImpl
 		/// object is destroyed.
 		
+	int readBytes(char* buffer, std::streamsize length);
+		/// Reads data from the HTTP session into the provided
+		/// buffer.
+		
 	bool expectContinue() const;
 		/// Returns true if the client expects a
 		/// 100 Continue response.
