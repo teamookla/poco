@@ -149,7 +149,9 @@ void TCPServerDispatcher::enqueue(const StreamSocket& socket)
 		{
             _threadPool.startWithPriority(_pParams->getThreadPriority(), *this, threadName);
             ++_currentThreads;
-		}
+		} else {
+            throw NoThreadAvailableException(format("[Dispatcher] %d in use, max count = %d", _currentThreads, _pParams->getMaxThreads()));
+        }
 	}
 	else
 	{

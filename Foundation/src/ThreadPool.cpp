@@ -20,8 +20,10 @@
 #include "Poco/Event.h"
 #include "Poco/ThreadLocal.h"
 #include "Poco/ErrorHandler.h"
+#include "Poco/Format.h"
 #include <sstream>
 #include <ctime>
+
 #if defined(_WIN32_WCE) && _WIN32_WCE < 0x800
 #include "wce_time.h"
 #endif
@@ -468,7 +470,7 @@ PooledThread* ThreadPool::getThread()
 			}
 		}
 		else
-			throw NoThreadAvailableException();
+			throw NoThreadAvailableException(format("[ThreadPool] %d in use, max count = %d", static_cast<int>(_threads.size()), _maxCapacity));
 	}
 	pThread->activate();
 	return pThread;
