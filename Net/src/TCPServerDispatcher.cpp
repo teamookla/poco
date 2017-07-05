@@ -147,17 +147,11 @@ void TCPServerDispatcher::enqueue(const StreamSocket& socket)
 		_queue.enqueueNotification(new TCPConnectionNotification(socket));
 		if (!_queue.hasIdleThreads() && _currentThreads < _pParams->getMaxThreads())
 		{
-			try
-			{
-				_threadPool.startWithPriority(_pParams->getThreadPriority(), *this, threadName);
-				++_currentThreads;
-			}
-			catch (Poco::Exception&)
-			{
-				// no problem here, connection is already queued
-				// and a new thread might be available later.
-			}
-		}
+            _threadPool.startWithPriority(_pParams->getThreadPriority(), *this, threadName);
+            ++_currentThreads;
+		} else {
+            throw NoThreadAvailableException(format("[Dispatcher] %d in use, max count = %d", _currentThreads, _pParams->getMaxThreads()));
+        }
 	}
 	else
 	{
