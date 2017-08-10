@@ -423,7 +423,6 @@ private:
 	SocketImpl& operator = (const SocketImpl&);
 	
 	poco_socket_t _sockfd;
-	int _peekBytesRemaining;
 #if defined(POCO_BROKEN_TIMEOUTS)
 	Poco::Timespan _recvTimeout;
 	Poco::Timespan _sndTimeout;
