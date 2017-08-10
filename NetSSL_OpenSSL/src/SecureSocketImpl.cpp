@@ -52,8 +52,7 @@ SecureSocketImpl::SecureSocketImpl(Poco::AutoPtr<SocketImpl> pSocketImpl, Contex
 	_pSSL(0),
 	_pSocket(pSocketImpl),
 	_pContext(pContext),
-	_needHandshake(false),
-	_peekBytesRemaining(0)
+	_needHandshake(false)
 {
 	poco_check_ptr (_pSocket);
 	poco_check_ptr (_pContext);
@@ -254,10 +253,6 @@ void SecureSocketImpl::close()
 
 bool SecureSocketImpl::poll(const Poco::Timespan& timeout, int mode)
 {
-	if (mode & SocketImpl::SELECT_READ && _peekBytesRemaining > 0)
-	{
-		return true;
-	}
 	return _pSocket->poll(timeout, mode);
 }
 
@@ -315,13 +310,9 @@ int SecureSocketImpl::receiveBytes(void* buffer, int length, int flags)
 	{
 		if (flags & MSG_PEEK) {
 			rc = SSL_peek(_pSSL, buffer, length);
-			_peekBytesRemaining = rc;
 		}
 		else {
 			rc = SSL_read(_pSSL, buffer, length);
-			if (_peekBytesRemaining > 0) {
-				_peekBytesRemaining -= std::max(rc, _peekBytesRemaining);
-			}
 		}
 	}
 	while (mustRetry(rc));

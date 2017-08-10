@@ -237,7 +237,6 @@ private:
 	bool _needHandshake;
 	std::string _peerHostName;
 	Session::Ptr _pSession;
-	int _peekBytesRemaining;
 	
 	friend class SecureStreamSocketImpl;
 };
