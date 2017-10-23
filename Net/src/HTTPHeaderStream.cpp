@@ -99,6 +99,12 @@ HTTPHeaderStreamBuf* HTTPHeaderIOS::rdbuf()
 }
 
 
+int HTTPHeaderIOS::sync()
+{
+	return _buf.sync();
+}
+
+
 //
 // HTTPHeaderInputStream
 //

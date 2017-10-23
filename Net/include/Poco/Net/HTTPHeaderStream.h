@@ -62,6 +62,7 @@ public:
 	HTTPHeaderIOS(HTTPSession& session, HTTPHeaderStreamBuf::openmode mode);
 	~HTTPHeaderIOS();
 	HTTPHeaderStreamBuf* rdbuf();
+	int sync();
 
 protected:
 	HTTPHeaderStreamBuf _buf;
