@@ -1,18 +1,13 @@
 //
 // Image.cpp
 //
-// $Id: //poco/Main/PDF/samples/Image/src/Image.cpp#1 $
+// This sample demonstrates the generation and saving of a PDF
+// document that contains an mbedded image loaded from external file.
 //
-// This sample demonstrates the Data library.
+// Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
+// and Contributors.
 //
-// Copyright (c) 2007, Applied Informatics Software Engineering GmbH.
-// All rights reserved.
-//
-// This is unpublished proprietary source code of Applied Informatics
-// Software Engineering GmbH.
-// The contents of this pdfFile may not be disclosed to third parties, 
-// copied or duplicated in any form, in whole or in part, without
-// prior written permission from Applied Informatics.
+// SPDX-License-Identifier:	BSL-1.0
 //
 
 #include "Poco/PDF/Document.h"

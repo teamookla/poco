@@ -7,6 +7,7 @@ Util
 Net
 Crypto
 NetSSL_OpenSSL
+NetSSL_Win
 Data
 Data/SQLite
 Data/ODBC
@@ -17,5 +18,6 @@ PageCompiler/File2Page
 PDF
 CppParser
 MongoDB
+Redis
 PocoDoc
 ProGen

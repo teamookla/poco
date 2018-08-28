@@ -16,6 +16,21 @@
 *.vsp
 *.psess
 
+# Gradle #
+##########
+.gradle/
+**/gradle/
+
+# NuGet #
+#########
+*.nupkg
+
+# WiX #
+#######
+*.msi
+*.wixobj
+*.wixpdb
+
 # Make #
 ########
 config.build
@@ -89,6 +104,8 @@ Thumbs.db
 *.tlog
 *.lastbuildstate
 *.unsuccessfulbuild
+*.opendb
+.vs/
 release_shared/
 debug_shared/
 release_static/
@@ -104,7 +121,7 @@ lib64/
 pocomsg.h
 
 # Eclipse generated files #
-######################
+###########################
 .project
 .cproject
 .settings
@@ -113,3 +130,5 @@ cmake-build/
 # Temporary files #
 ###################
 *.bak
+stage/
+releases/

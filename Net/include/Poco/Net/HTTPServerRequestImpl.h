@@ -1,8 +1,6 @@
 //
 // HTTPServerRequestImpl.h
 //
-// $Id: //poco/1.4/Net/include/Poco/Net/HTTPServerRequestImpl.h#1 $
-//
 // Library: Net
 // Package: HTTPServer
 // Module:  HTTPServerRequestImpl
@@ -49,6 +47,14 @@ public:
 		/// Creates the HTTPServerRequestImpl, using the
 		/// given HTTPServerSession.
 
+	HTTPServerRequestImpl(HTTPServerResponseImpl& response, HTTPServerSession& session, HTTPServerParams* pParams, const std::string& headersStr);
+		/// Creates the HTTPServerRequestImpl, using the
+		/// given HTTPServerSession and headers.
+
+	HTTPServerRequestImpl(HTTPServerResponseImpl& response, HTTPServerSession& session, HTTPServerParams* pParams, std::istream& headers);
+		/// Creates the HTTPServerRequestImpl, using the
+		/// given HTTPServerSession and headers.
+
 	~HTTPServerRequestImpl();
 		/// Destroys the HTTPServerRequestImpl.
 		
@@ -58,10 +64,6 @@ public:
 		///
 		/// The stream is valid until the HTTPServerRequestImpl
 		/// object is destroyed.
-		
-	bool expectContinue() const;
-		/// Returns true if the client expects a
-		/// 100 Continue response.
 		
 	const SocketAddress& clientAddress() const;
 		/// Returns the client's address.
@@ -75,16 +77,26 @@ public:
 	HTTPServerResponse& response() const;
 		/// Returns a reference to the associated response.
 		
+	bool secure() const;
+		/// Returns true if the request is using a secure
+		/// connection. Returns false if no secure connection
+		/// is used, or if it is not known whether a secure
+		/// connection is used.		
+		
 	StreamSocket& socket();
 		/// Returns a reference to the underlying socket.
 		
 	StreamSocket detachSocket();
 		/// Returns the underlying socket after detaching
 		/// it from the server session.
+		
+	int readBytes(char* buffer, std::streamsize length);
+		/// Reads data from the HTTP session into the provided
+		/// buffer.
+		
+	HTTPServerSession& session();
+		/// Returns the underlying HTTPServerSession.
 
-protected:
-	static const std::string EXPECT;
-	
 private:
 	HTTPServerResponseImpl&         _response;
 	HTTPServerSession&              _session;
@@ -92,6 +104,8 @@ private:
 	Poco::AutoPtr<HTTPServerParams> _pParams;
 	SocketAddress                   _clientAddress;
 	SocketAddress                   _serverAddress;
+
+	void initialize(std::istream& headers);
 };
 
 
@@ -127,6 +141,12 @@ inline const HTTPServerParams& HTTPServerRequestImpl::serverParams() const
 inline HTTPServerResponse& HTTPServerRequestImpl::response() const
 {
 	return _response;
+}
+
+
+inline HTTPServerSession& HTTPServerRequestImpl::session()
+{
+	return _session;
 }
 
 

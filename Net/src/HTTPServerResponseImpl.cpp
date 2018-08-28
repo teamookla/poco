@@ -1,8 +1,6 @@
 //
 // HTTPServerResponseImpl.cpp
 //
-// $Id: //poco/1.4/Net/src/HTTPServerResponseImpl.cpp#2 $
-//
 // Library: Net
 // Package: HTTPServer
 // Module:  HTTPServerResponseImpl
@@ -150,6 +148,24 @@ void HTTPServerResponseImpl::sendBuffer(const void* pBuffer, std::size_t length)
 	{
 		_pStream->write(static_cast<const char*>(pBuffer), static_cast<std::streamsize>(length));
 	}
+}
+
+
+std::ostream& HTTPServerResponseImpl::sendRaw()
+{
+	poco_assert (!_pStream);
+
+	setChunkedTransferEncoding(false);
+	
+	_pStream = new HTTPHeaderOutputStream(_session);
+	write(*_pStream);
+	return *_pStream;
+}
+
+
+int HTTPServerResponseImpl::writeBytes(const char* buffer, std::streamsize length)
+{
+	return _session.write(buffer, length);
 }
 
 

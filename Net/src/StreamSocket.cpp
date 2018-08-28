@@ -1,8 +1,6 @@
 //
 // StreamSocket.cpp
 //
-// $Id: //poco/1.4/Net/src/StreamSocket.cpp#1 $
-//
 // Library: Net
 // Package: Sockets
 // Module:  StreamSocket
@@ -41,7 +39,7 @@ StreamSocket::StreamSocket(const SocketAddress& address): Socket(new StreamSocke
 }
 
 
-StreamSocket::StreamSocket(IPAddress::Family family): Socket(new StreamSocketImpl(family))
+StreamSocket::StreamSocket(SocketAddress::Family family): Socket(new StreamSocketImpl(family))
 {
 }
 
@@ -124,6 +122,12 @@ int StreamSocket::sendBytes(FIFOBuffer& fifoBuf)
 	int ret = impl()->sendBytes(fifoBuf.begin(), (int) fifoBuf.used());
 	if (ret > 0) fifoBuf.drain(ret);
 	return ret;
+}
+
+
+int StreamSocket::peekBytes(void* buffer, int length, int flags) const
+{
+	return impl()->peekBytes(buffer, length, flags);
 }
 
 

@@ -1,8 +1,6 @@
 //
 // HTTPHeaderStream.cpp
 //
-// $Id: //poco/1.4/Net/src/HTTPHeaderStream.cpp#1 $
-//
 // Library: Net
 // Package: HTTP
 // Module:  HTTPHeaderStream
@@ -96,6 +94,12 @@ HTTPHeaderIOS::~HTTPHeaderIOS()
 HTTPHeaderStreamBuf* HTTPHeaderIOS::rdbuf()
 {
 	return &_buf;
+}
+
+
+int HTTPHeaderIOS::sync()
+{
+	return _buf.sync();
 }
 
 

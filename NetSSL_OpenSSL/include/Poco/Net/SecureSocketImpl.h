@@ -1,8 +1,6 @@
 //
 // SecureSocketImpl.h
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/include/Poco/Net/SecureSocketImpl.h#2 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLSockets
 // Module:  SecureSocketImpl
@@ -113,6 +111,8 @@ public:
 		/// underlying TCP connection. No orderly SSL shutdown
 		/// is performed.
 	
+	bool poll(const Poco::Timespan& timeout, int mode);
+
 	int sendBytes(const void* buffer, int length, int flags = 0);
 		/// Sends the contents of the given buffer through
 		/// the socket. Any specified flags are ignored.
@@ -120,6 +120,8 @@ public:
 		/// Returns the number of bytes sent, which may be
 		/// less than the number of bytes specified.
 	
+	int peekBytes(void* buffer, int length, int flags);
+
 	int receiveBytes(void* buffer, int length, int flags = 0);
 		/// Receives data from the socket and stores it
 		/// in buffer. Up to length bytes are received.
@@ -196,7 +198,21 @@ protected:
 	static bool isLocalHost(const std::string& hostName);
 		/// Returns true iff the given host name is the local host 
 		/// (either "localhost" or "127.0.0.1").
-		
+
+	bool mustRetry(int rc);
+		/// Returns true if the last operation should be retried,
+		/// otherwise false.
+		///
+		/// In case of an SSL_ERROR_WANT_READ error, and if the socket is 
+		/// blocking, waits for the underlying socket to become readable.
+		///
+		/// In case of an SSL_ERROR_WANT_WRITE error, and if the socket is
+		/// blocking, waits for the underlying socket to become writable.
+		///
+		/// Can also throw a Poco::TimeoutException if the socket does
+		/// not become readable or writable within the sockets
+		/// receive or send timeout.
+
 	int handleError(int rc);
 		/// Handles an SSL error by throwing an appropriate exception.
 

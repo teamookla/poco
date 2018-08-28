@@ -1,8 +1,6 @@
 //
 // SecureStreamSocketImpl.h
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/include/Poco/Net/SecureStreamSocketImpl.h#2 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLSockets
 // Module:  SecureStreamSocketImpl
@@ -83,6 +81,8 @@ public:
 		/// Returns the number of bytes sent, which may be
 		/// less than the number of bytes specified.
 	
+	int peekBytes(void* buffer, int length, int flags = 0);
+
 	int receiveBytes(void* buffer, int length, int flags = 0);
 		/// Receives data from the socket and stores it
 		/// in buffer. Up to length bytes are received.
@@ -111,6 +111,8 @@ public:
 		/// For an SSL connection, returns the number of bytes that
 		/// can be read from the currently buffered SSL record,
 		/// before a new record is read from the underlying socket.
+
+	bool poll(const Poco::Timespan& timeout, int mode);
 
 	void shutdownReceive();
 		/// Shuts down the receiving part of the socket connection.

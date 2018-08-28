@@ -1,8 +1,6 @@
 //
 // HTTPServerResponse.h
 //
-// $Id: //poco/1.4/Net/include/Poco/Net/HTTPServerResponse.h#1 $
-//
 // Library: Net
 // Package: HTTPServer
 // Module:  HTTPServerResponse
@@ -91,6 +89,12 @@ public:
 		///
 		/// Must not be called after send(), sendFile()  
 		/// or redirect() has been called.
+		
+	virtual std::ostream& sendRaw() = 0;
+
+	virtual int writeBytes(const char* buffer, std::streamsize length) = 0;
+		/// Writes data to the HTTP session from the provided
+		/// buffer.
 		
 	virtual void redirect(const std::string& uri, HTTPStatus status = HTTP_FOUND) = 0;
 		/// Sets the status code, which must be one of

@@ -1,8 +1,6 @@
 //
 // ICMPv4PacketImpl.h
 //
-// $Id: //poco/1.4/Net/include/Poco/Net/ICMPv4PacketImpl.h#1 $
-//
 // Library: Net
 // Package: ICMP
 // Module:  ICMPv4PacketImpl
@@ -49,7 +47,7 @@ public:
 	};
 
 	// compile-time shield against misalignment
-#ifndef POCO_ANDROID	
+#if (POCO_OS != POCO_OS_SOLARIS) && !defined(POCO_ANDROID)
 	poco_static_assert (offsetof(Header, code) == 0x01);
 	poco_static_assert (offsetof(Header, checksum) == 0x02);
 	poco_static_assert (offsetof(Header, id) == 0x04);

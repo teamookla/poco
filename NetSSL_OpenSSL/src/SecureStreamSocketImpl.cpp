@@ -1,8 +1,6 @@
 //
 // SecureStreamSocketImpl.cpp
 //
-// $Id: //poco/1.4/NetSSL_OpenSSL/src/SecureStreamSocketImpl.cpp#6 $
-//
 // Library: NetSSL_OpenSSL
 // Package: SSLSockets
 // Module:  SecureStreamSocketImpl
@@ -123,6 +121,12 @@ int SecureStreamSocketImpl::sendBytes(const void* buffer, int length, int flags)
 }
 
 
+int SecureStreamSocketImpl::peekBytes(void* buffer, int length, int flags)
+{
+	return _impl.peekBytes(buffer, length, flags);
+}
+
+
 int SecureStreamSocketImpl::receiveBytes(void* buffer, int length, int flags)
 {
 	return _impl.receiveBytes(buffer, length, flags);
@@ -150,6 +154,12 @@ void SecureStreamSocketImpl::sendUrgent(unsigned char data)
 int SecureStreamSocketImpl::available()
 {
 	return _impl.available();
+}
+
+
+bool SecureStreamSocketImpl::poll(const Poco::Timespan& timeout, int mode)
+{
+	return _impl.poll(timeout, mode);
 }
 
 

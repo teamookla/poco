@@ -1,8 +1,6 @@
 //
 // Socket.h
 //
-// $Id: //poco/1.4/Net/include/Poco/Net/Socket.h#2 $
-//
 // Library: Net
 // Package: Sockets
 // Module:  Socket
@@ -120,7 +118,7 @@ public:
 		/// In this case, the return value may be greater than the sum
 		/// of all sockets in all list.
 
-	bool poll(const Poco::Timespan& timeout, int mode) const;
+	virtual bool poll(const Poco::Timespan& timeout, int mode) const;
 		/// Determines the status of the socket, using a 
 		/// call to poll() or select().
 		/// 
@@ -299,7 +297,7 @@ public:
 protected:
 	Socket(SocketImpl* pImpl);
 		/// Creates the Socket and attaches the given SocketImpl.
-		/// The socket takes owership of the SocketImpl.
+		/// The socket takes ownership of the SocketImpl.
 
 	poco_socket_t sockfd() const;
 		/// Returns the socket descriptor for this socket.
@@ -368,12 +366,6 @@ inline bool Socket::operator >= (const Socket& socket) const
 inline void Socket::close()
 {
 	_pImpl->close();
-}
-
-
-inline bool Socket::poll(const Poco::Timespan& timeout, int mode) const
-{
-	return _pImpl->poll(timeout, mode);
 }
 
 

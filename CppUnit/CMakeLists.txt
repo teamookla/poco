@@ -1,6 +1,9 @@
 set(LIBNAME "CppUnit")
 
 # Sources
+if (WIN32)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif (WIN32)
 file(GLOB SRCS_G "src/*.cpp")
 POCO_SOURCES_AUTO( SRCS ${SRCS_G})
 
@@ -20,3 +23,4 @@ target_include_directories( "${LIBNAME}"
         $<INSTALL_INTERFACE:include>
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
+target_compile_definitions("${LIBNAME}" PUBLIC ${LIB_MODE_DEFINITIONS})

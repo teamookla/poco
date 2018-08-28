@@ -28,14 +28,18 @@
 			${PocoBuild}/*/doc/images
 		</resources>
 		<compiler>
-			<exec>g++</exec>
+			<exec>clang++</exec>
 			<options>
 				${Includes},
 				-I/usr/local/mysql/include,
+				-I/usr/include/mysql,
 				-D_DEBUG,
 				-E,
 				-C,
-				-DPOCO_NO_GCC_API_ATTRIBUTE
+				-DPOCO_NO_GCC_API_ATTRIBUTE,
+				-xc++
+				-std=c++11,
+				-stdlib=libc++
 			</options>
 			<path></path>
 			<usePipe>true</usePipe>
