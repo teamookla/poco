@@ -17,8 +17,8 @@ def builds = [
   'linux64':   [ agent: agents.deb5_64bit ],
   'freebsd64': [ agent: agents.freebsd64 ],
   'macosx':    [ agent: agents.macos ],
-  'win32':     [ agent: agents.win32, winPlatform:'x86' ],
-  'win64':     [ agent: agents.win64, winPlatform:'x64' ],
+  'windows32': [ agent: agents.win32, winPlatform:'x86' ],
+  'windows64': [ agent: agents.win64, winPlatform:'x64' ],
 ]
 
 def doSh(unixScript, windowsScript) {
