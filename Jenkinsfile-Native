@@ -1,17 +1,29 @@
-import com.google.common.base.Charsets
-import java.util.regex.*
-import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
-import org.apache.commons.codec.binary.Base32
+import java.util.regex.Pattern
+
+def OPENSSL_VERSION = "1.1.1"
 
 def agents = [
-  deb5_32bit:    [ label: 'nr-build32-deb5-1' ],
-  deb5_64bit:    [ label: 'nr-build64-deb5-1', ],
-  freebsd32:     [ label: 'freebsd32-11' ],
-  freebsd64:     [ label: 'freebsd-11' ],
-  macos:         [ label: 'macos' ],
-  win32:         [ label: 'aw-win-lab1' ],
-  win64:         [ label: 'aw-win-lab1' ],
+  deb5_32bit:    [ label: 'nr-build32-deb5-1', toolchains: [
+    "openssl-${OPENSSL_VERSION}-deb5_32bit.tar.gz": "."
+  ] ],
+  deb5_64bit:    [ label: 'nr-build64-deb5-1', , toolchains: [
+    "openssl-${OPENSSL_VERSION}-deb5_64bit.tar.gz": "."
+  ] ],
+  freebsd32:     [ label: 'freebsd32-11' , toolchains: [
+    "openssl-${OPENSSL_VERSION}-freebsd11_32bit.tar.gz": "."
+  ] ],
+  freebsd64:     [ label: 'freebsd-11' , toolchains: [
+    "openssl-${OPENSSL_VERSION}-freebsd11_64bit.tar.gz": "."
+  ] ],
+  macos:         [ label: 'macos' , toolchains: [
+    "openssl-${OPENSSL_VERSION}-macos.tar.gz": "."
+  ] ],
+  win32:         [ label: 'aw-win-lab1' , toolchains: [
+    "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
+  ] ],
+  win64:         [ label: 'aw-win-lab1' , toolchains: [
+    "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
+  ] ],
 ]
 
 def builds = [
@@ -24,53 +36,6 @@ def builds = [
   'windows32': [ agent: agents.win32, winPlatform:'x86' ],
   'windows64': [ agent: agents.win64, winPlatform:'x86' ],
 ]
-
-def doSh(unixScript, windowsScript) {
-  if (Boolean.valueOf(env.UNIX)) {
-    sh unixScript
-  } else {
-    bat windowsScript
-  }
-}
-
-def withAwsCredentials(id, Closure cl) {
-  withCredentials([[
-    $class: 'AmazonWebServicesCredentialsBinding',
-    credentialsId: id,
-    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-  ]], cl)
-}
-
-// Copied from branch-api-plugin/src/main/java/jenkins/branch/WorkspaceLocatorImpl.java:
-def uniqueSuffix(String name) {
-  // TODO still in beta: byte[] sha256 = Hashing.sha256().hashString(name).asBytes();
-  byte[] sha256;
-  try {
-      sha256 = MessageDigest.getInstance("SHA-256").digest(name.getBytes(Charsets.UTF_16LE));
-  } catch (NoSuchAlgorithmException x) {
-      throw new AssertionError("https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#MessageDigest", x);
-  }
-  return new Base32(0).encodeToString(sha256).replaceFirst("=+\$", "");
-}
-
-def generateWorkspaceName(name) {
-  def pathMax = jenkins.branch.WorkspaceLocatorImpl.PATH_MAX
-  String mnemonic = name.replaceAll("(%[0-9A-F]{2}|[^a-zA-Z0-9-_.])+", "_")
-  int maxSuffix = 53 /* ceil(256 / lg(32)) + length("-") */
-  int maxMnemonic = Math.max(pathMax - maxSuffix, 1)
-  if (maxSuffix + maxMnemonic > pathMax) {
-      // The whole suffix cannot be included in the path.  Trim the suffix
-      // and the mnemonic to fit inside pathMax.  The mnemonic always gets
-      // at least one character.  The suffix always gets 10 characters plus
-      // the "-".  The rest of pathMax is split evenly between the two.
-      final int minSuffix = 10 + /* length("-") */ 1
-      maxMnemonic = Math.max((int)((pathMax - minSuffix) / 2), 1)
-      maxSuffix = Math.max(pathMax - maxMnemonic, minSuffix)
-  }
-  maxSuffix = maxSuffix - 1 // Remove the "-"
-  mnemonic.reverse().take(maxMnemonic).reverse() + "-" + uniqueSuffix(name).take(maxSuffix)
-}
 
 def createBuildStages(builds) {
   builds.collectEntries { name, definition ->
@@ -87,39 +52,47 @@ def createBuildStage(name, definition) {
           checkout scm
           withEnv([
             "PLATFORM=${definition.platform ?: name}",
-            "UNIX=${isUnix()}",
           ]) {
-            if (definition.agent.toolchains) {
-              withAwsCredentials('ookla-native-toolchains') {
+            withAwsCredentials('jenkins-native-builds') {
+              if (definition.agent.toolchains) {
                 definition.agent.toolchains.each { toolchain, dest ->
-                  sh "aws s3 cp s3://ookla-native-toolchains/${toolchain} - | tar xz -C ${dest}"
+                  if (toolchain.endsWith('.zip')) {
+                    sh """
+                      aws s3 cp s3://ookla-native-toolchains/${toolchain} ${toolchain}
+                      [ -e ${dest} ] || mkdir -p ${dest}
+                      unzip -o ${toolchain} -d ${dest}
+                      rm ${toolchain}
+                    """
+                  } else {
+                    sh "aws s3 cp s3://ookla-native-toolchains/${toolchain} - | tar xzf - -C ${dest}"
+                  }
                 }
               }
-            }
-            doSh(
-              'PATH=$PATH:/opt/cmake-3.11.4/bin exec ./jenkins.sh',
-              "call jenkins.cmd ${definition.winPlatform}"
-            )
 
-            def version = env.BRANCH_NAME
-            def m = Pattern.compile("${APPLICATION_NAME}-(\\d.\\d.\\d)").matcher(env.BRANCH_NAME)
-            if (m.matches()) {
-              version = m.getAt(0)[1]
-            }
-            m = null
-
-            // zip and publish results
-            withCredentials([[
-              $class: 'AmazonWebServicesCredentialsBinding',
-              credentialsId: 'ookla-native-artifacts',
-              accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-              secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-            ]]) {
               ['Debug', 'Release'].each { buildType ->
-                doSh(
-                  "rm -f cmake_install_${buildType}.zip",
-                  "del /q cmake_install_${buildType}.zip"
-                )
+                dir("cmake_build_${buildType}") {
+                  deleteDir()
+                }
+                dir("cmake_install_${buildType}") {
+                  deleteDir()
+                }
+              }
+
+              if (isUnix()) {
+                sh 'PATH=$PATH:/opt/cmake-3.11.4/bin exec ./jenkins.sh'
+              } else {
+                msvcBat "sh ./jenkins.sh", [winPlatform: definition.winPlatform]
+              }
+
+              def version = env.BRANCH_NAME
+              def m = Pattern.compile("${APPLICATION_NAME}-(\\d.\\d.\\d)").matcher(env.BRANCH_NAME)
+              if (m.matches()) {
+                version = m.getAt(0)[1]
+              }
+              m = null
+
+              ['Debug', 'Release'].each { buildType ->
+                sh "rm -f cmake_install_${buildType}.zip"
                 zip zipFile:"cmake_install_${buildType}.zip", dir:"cmake_install_${buildType}"
                 s3Upload(
                   bucket:'ookla-native-artifacts',
@@ -139,6 +112,7 @@ pipeline {
   environment {
     APPLICATION_NAME = "poco"
     BUILD_TIMESTAMP = "${timeStamp}"
+    OPENSSL_VERSION = "${OPENSSL_VERSION}"
   }
   stages {
     stage('Build All') {
