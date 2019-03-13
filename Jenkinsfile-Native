@@ -81,7 +81,7 @@ def createBuildStage(name, definition) {
               if (isUnix()) {
                 sh 'PATH=$PATH:/opt/cmake-3.11.4/bin exec ./jenkins.sh'
               } else {
-                msvcBat "sh ./jenkins.sh", [winPlatform: definition.winPlatform]
+                msvcBat "set PLATFORM=${definition.platform ?: name} & sh ./jenkins.sh", [winPlatform: definition.winPlatform]
               }
 
               def version = env.BRANCH_NAME

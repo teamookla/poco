@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -Eeuxo pipefail
+env
 
 CONFIGURE_FLAGS=
 CMAKE_FLAGS=(
@@ -41,31 +42,36 @@ case "$PLATFORM" in
     JOBS=$(sysctl -n hw.ncpu)
     ;;
   win*)
-    case $VS_VERSION in
-      vs90)
-        CMAKE_GENERATOR="Visual Studio 9 2008"
-        ;;
-      vs100)
-        CMAKE_GENERATOR="Visual Studio 10 2010"
-        ;;
-      vs110)
-        CMAKE_GENERATOR="Visual Studio 11 2012"
-        ;;
-      vs120)
-        CMAKE_GENERATOR="Visual Studio 12 2013"
-        ;;
-      vs140)
-        CMAKE_GENERATOR="Visual Studio 14 2015"
-        ;;
-      vs150)
-        CMAKE_GENERATOR="Visual Studio 15 2017"
-        ;;
-      *)
-        echo "Error: VS_VERSION not set"
-        exit 1
-    esac
-    if [[ $WIN_PLATFORM = x64 ]]; then
-      set CMAKE_GENERATOR="$CMAKE_GENERATOR Win64"
+    if [[ -z $CMAKE_GENERATOR ]]; then
+      case $VS_VERSION in
+        vs90)
+          CMAKE_GENERATOR="Visual Studio 9 2008"
+          ;;
+        vs100)
+          CMAKE_GENERATOR="Visual Studio 10 2010"
+          ;;
+        vs110)
+          CMAKE_GENERATOR="Visual Studio 11 2012"
+          ;;
+        vs120)
+          CMAKE_GENERATOR="Visual Studio 12 2013"
+          ;;
+        vs140)
+          CMAKE_GENERATOR="Visual Studio 14 2015"
+          ;;
+        vs150)
+          CMAKE_GENERATOR="Visual Studio 15 2017"
+          ;;
+        vs150sa)
+          CMAKE_GENERATOR="Visual Studio 15 2017"
+          ;;
+        *)
+          echo "Error: VS_VERSION not set"
+          exit 1
+      esac
+      if [[ $WIN_PLATFORM = x64 ]]; then
+        set CMAKE_GENERATOR="$CMAKE_GENERATOR Win64"
+      fi
     fi
     CMAKE_FLAGS=(
       -G "$CMAKE_GENERATOR"
