@@ -1,6 +1,6 @@
 import java.util.regex.Pattern
 
-def OPENSSL_VERSION = "1.1.1b"
+def OPENSSL_VERSION = "1.1.1c"
 
 def agents = [
   deb5_32bit:    [ label: 'nr-build32-deb5-1', toolchains: [
