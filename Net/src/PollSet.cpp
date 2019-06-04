@@ -16,7 +16,7 @@
 #include "Poco/Net/SocketImpl.h"
 #include "Poco/Mutex.h"
 #include <set>
-
+#include <cstring>
 
 #if defined(_WIN32) && _WIN32_WINNT >= 0x0600
 #ifndef POCO_HAVE_FD_POLL

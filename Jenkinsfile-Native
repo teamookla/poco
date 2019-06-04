@@ -6,22 +6,28 @@ def agents = [
   deb5_32bit:    [ label: 'nr-build32-deb5-1', toolchains: [
     "openssl-${OPENSSL_VERSION}-deb5_32bit.tar.gz": "."
   ] ],
-  deb5_64bit:    [ label: 'nr-build64-deb5-1', , toolchains: [
+  deb5_64bit:    [ label: 'nr-build64-deb5-1', toolchains: [
     "openssl-${OPENSSL_VERSION}-deb5_64bit.tar.gz": "."
   ] ],
-  freebsd32:     [ label: 'freebsd32-11' , toolchains: [
+  deb8_64bit:    [ label: 'native-deb8-64', toolchains: [
+    "openssl-${OPENSSL_VERSION}-deb8_64bit.tar.gz": "."
+  ] ],
+  deb9_64bit:    [ label: 'native-deb9-64', toolchains: [
+    "openssl-${OPENSSL_VERSION}-deb9_64bit.tar.gz": "."
+  ] ],
+  freebsd32:     [ label: 'freebsd32-11', toolchains: [
     "openssl-${OPENSSL_VERSION}-freebsd11_32bit.tar.gz": "."
   ] ],
-  freebsd64:     [ label: 'freebsd-11' , toolchains: [
+  freebsd64:     [ label: 'freebsd-11', toolchains: [
     "openssl-${OPENSSL_VERSION}-freebsd11_64bit.tar.gz": "."
   ] ],
-  macos:         [ label: 'macos' , toolchains: [
+  macos:         [ label: 'macos', toolchains: [
     "openssl-${OPENSSL_VERSION}-macos.tar.gz": "."
   ] ],
-  win32:         [ label: 'aw-win-lab1' , toolchains: [
+  win32:         [ label: 'aw-win-lab1', toolchains: [
     "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
   ] ],
-  win64:         [ label: 'aw-win-lab1' , toolchains: [
+  win64:         [ label: 'aw-win-lab1', toolchains: [
     "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
   ] ],
 ]
@@ -31,6 +37,8 @@ def builds = [
   'freebsd64': [ agent: agents.freebsd64 ],
   'linux32':   [ agent: agents.deb5_32bit ],
   'linux64':   [ agent: agents.deb5_64bit ],
+  'linux64-deb8':   [ agent: agents.deb8_64bit ],
+  'linux64-deb9':   [ agent: agents.deb9_64bit ],
   'freebsd64': [ agent: agents.freebsd64 ],
   'macosx':    [ agent: agents.macos ],
   'windows32': [ agent: agents.win32, winPlatform:'x86' ],

@@ -20,14 +20,19 @@ case "$PLATFORM" in
       linux64)
         TOOLCHAIN=/home/jenkins/toolchains/gcc-6.3-x86_64
         ;;
+      *)
+        TOOLCHAIN=""
+        ;;
     esac
-    export LD_LIBRARY_PATH=$TOOLCHAIN/lib
-    if [[ -d $TOOLCHAIN/lib64 ]]; then
-      LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TOOLCHAIN/lib64
+    if [[  $TOOLCHAIN != "" ]]; then 
+        export LD_LIBRARY_PATH=$TOOLCHAIN/lib
+        if [[ -d $TOOLCHAIN/lib64 ]]; then
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TOOLCHAIN/lib64
+        fi
+        CMAKE_FLAGS+=(
+            -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN/Toolchain.cmake
+        )
     fi
-    CMAKE_FLAGS+=(
-      -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN/Toolchain.cmake
-    )
     JOBS=$(getconf _NPROCESSORS_ONLN)
     ;;
   macosx)
