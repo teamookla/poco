@@ -113,10 +113,7 @@ def createBuildStage(name, definition) {
               ['Debug', 'Release'].each { buildType ->
                 sh "rm -f cmake_install_${buildType}.zip"
                 zip zipFile:"cmake_install_${buildType}.zip", dir:"cmake_install_${buildType}"
-                s3Upload(
-                  bucket:'ookla-native-artifacts',
-                  path:"${APPLICATION_NAME}/${env.BRANCH_NAME}/${APPLICATION_NAME}-${version}-${PLATFORM}-${buildType}.zip",
-                  file:"cmake_install_${buildType}.zip")
+                sh "aws s3 cp --no-progress cmake_install_${buildType}.zip s3://ookla-native-artifacts/${APPLICATION_NAME}/${env.BRANCH_NAME}/${APPLICATION_NAME}-${version}-${PLATFORM}-${buildType}.zip"
               }
             }
           }
