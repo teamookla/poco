@@ -3,46 +3,49 @@ import java.util.regex.Pattern
 def OPENSSL_VERSION = "1.1.1c"
 
 def agents = [
-  deb5_32bit:    [ label: 'nr-build32-deb5-1', toolchains: [
+  deb5_32bit:      [ label: 'nr-build32-deb5-1', toolchains: [
     "openssl-${OPENSSL_VERSION}-deb5_32bit.tar.gz": "."
   ] ],
-  deb5_64bit:    [ label: 'nr-build64-deb5-1', toolchains: [
+  deb5_64bit:      [ label: 'nr-build64-deb5-1', toolchains: [
     "openssl-${OPENSSL_VERSION}-deb5_64bit.tar.gz": "."
   ] ],
-  deb8_64bit:    [ label: 'native-deb8-64', toolchains: [
+  deb8_64bit:      [ label: 'native-deb8-64', toolchains: [
     "openssl-${OPENSSL_VERSION}-deb8_64bit.tar.gz": "."
   ] ],
-  deb9_64bit:    [ label: 'native-deb9-64', toolchains: [
+  deb9_64bit:      [ label: 'native-deb9-64', toolchains: [
     "openssl-${OPENSSL_VERSION}-deb9_64bit.tar.gz": "."
   ] ],
-  freebsd32:     [ label: 'freebsd32-11', toolchains: [
+  freebsd11_32bit: [ label: 'freebsd32-11', toolchains: [
     "openssl-${OPENSSL_VERSION}-freebsd11_32bit.tar.gz": "."
   ] ],
-  freebsd64:     [ label: 'freebsd-11', toolchains: [
+  freebsd11_64bit: [ label: 'freebsd64-11', toolchains: [
     "openssl-${OPENSSL_VERSION}-freebsd11_64bit.tar.gz": "."
   ] ],
-  macos:         [ label: 'macos', toolchains: [
+  freebsd12_64bit: [ label: 'freebsd64-12', toolchains: [
+    "openssl-${OPENSSL_VERSION}-freebsd12_64bit.tar.gz": "."
+  ] ],
+  macos:           [ label: 'macos', toolchains: [
     "openssl-${OPENSSL_VERSION}-macos.tar.gz": "."
   ] ],
-  win32:         [ label: 'aw-win-lab1', toolchains: [
+  win32:           [ label: 'aw-windowsbuild1', toolchains: [
     "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
   ] ],
-  win64:         [ label: 'aw-win-lab1', toolchains: [
-    "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
+  win64:           [ label: 'aw-windowsbuild2', toolchains: [
+    "openssl-${OPENSSL_VERSION}-win64.tar.gz": "."
   ] ],
 ]
 
 def builds = [
-  'freebsd32': [ agent: agents.freebsd32 ],
-  'freebsd64': [ agent: agents.freebsd64 ],
-  'linux32':   [ agent: agents.deb5_32bit ],
-  'linux64':   [ agent: agents.deb5_64bit ],
-  'linux64-deb8':   [ agent: agents.deb8_64bit ],
-  'linux64-deb9':   [ agent: agents.deb9_64bit ],
-  'freebsd64': [ agent: agents.freebsd64 ],
-  'macosx':    [ agent: agents.macos ],
-  'windows32': [ agent: agents.win32, winPlatform:'x86' ],
-  'windows64': [ agent: agents.win64, winPlatform:'x86' ],
+  'freebsd11_32': [ agent: agents.freebsd11_32bit ],
+  'freebsd11_64': [ agent: agents.freebsd11_64bit ],
+  'freebsd12_64': [ agent: agents.freebsd12_64bit ],
+  'linux32':      [ agent: agents.deb5_32bit ],
+  'linux64':      [ agent: agents.deb5_64bit ],
+  'linux64-deb8': [ agent: agents.deb8_64bit ],
+  'linux64-deb9': [ agent: agents.deb9_64bit ],
+  'macosx':       [ agent: agents.macos ],
+  'win32':        [ agent: agents.win32, winPlatform:'x86' ],
+  'win64':        [ agent: agents.win64, winPlatform:'x64' ],
 ]
 
 def createBuildStages(builds) {
@@ -66,23 +69,30 @@ def createBuildStage(name, definition) {
                 definition.agent.toolchains.each { toolchain, dest ->
                   if (toolchain.endsWith('.zip')) {
                     sh """
-                      aws s3 cp s3://ookla-native-toolchains/${toolchain} ${toolchain}
+                      aws s3 cp --no-progress s3://ookla-native-toolchains/${toolchain} ${toolchain}
                       [ -e ${dest} ] || mkdir -p ${dest}
                       unzip -o ${toolchain} -d ${dest}
                       rm ${toolchain}
                     """
                   } else {
-                    sh "aws s3 cp s3://ookla-native-toolchains/${toolchain} - | tar xzf - -C ${dest}"
+                  sh """
+			aws s3 cp --no-progress s3://ookla-native-toolchains/${toolchain} . 
+			tar xzf ${toolchain} -C ${dest}
+			rm -rf ${toolchain}
+		    """
                   }
                 }
               }
 
-              ['Debug', 'Release'].each { buildType ->
-                dir("cmake_build_${buildType}") {
-                  deleteDir()
-                }
-                dir("cmake_install_${buildType}") {
-                  deleteDir()
+              // Always do clean builds on master.
+              if (env.BRANCH_NAME == 'master') {
+                ['Debug', 'Release'].each { buildType ->
+                  dir("cmake_build_${buildType}") {
+                    deleteDir()
+                  }
+                  dir("cmake_install_${buildType}") {
+                    deleteDir()
+                  }
                 }
               }
 
@@ -102,10 +112,7 @@ def createBuildStage(name, definition) {
               ['Debug', 'Release'].each { buildType ->
                 sh "rm -f cmake_install_${buildType}.zip"
                 zip zipFile:"cmake_install_${buildType}.zip", dir:"cmake_install_${buildType}"
-                s3Upload(
-                  bucket:'ookla-native-artifacts',
-                  path:"${APPLICATION_NAME}/${env.BRANCH_NAME}/${APPLICATION_NAME}-${version}-${PLATFORM}-${buildType}.zip",
-                  file:"cmake_install_${buildType}.zip")
+                sh "aws s3 cp --no-progress cmake_install_${buildType}.zip s3://ookla-native-artifacts/${APPLICATION_NAME}/${env.BRANCH_NAME}/${APPLICATION_NAME}-${version}-${PLATFORM}-${buildType}.zip"
               }
             }
           }
@@ -126,9 +133,7 @@ pipeline {
     stage('Build All') {
       steps {
         script {
-          throttle(['fargate']) {
-            parallel createBuildStages(builds)
-          }
+          parallel createBuildStages(builds)
         }
       }
     }

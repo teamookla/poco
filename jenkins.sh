@@ -7,8 +7,24 @@ CONFIGURE_FLAGS=
 CMAKE_FLAGS=(
   -DOPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/usr
 )
-MAKE=make
-JOBS=2
+NINJA="$(type -p ninja || true)"
+if [ "${USE_NINJA:-true}" != "true" -o  -z "$NINJA" ]; then 
+    JOBS=4
+    case $(uname) in
+        Linux |  Darwin)
+	    JOBS=$(getconf _NPROCESSORS_ONLN)
+	    ;;
+        FreeBSD)
+	    JOBS=$(sysctl -n hw.ncpu)
+	    ;;
+    esac
+    MAKE="make -j${JOBS}"
+else
+    MAKE=ninja
+    CMAKE_FLAGS+=(
+        "-GNinja"
+    )
+fi
 
 echo "Testing platform $PLATFORM"
 case "$PLATFORM" in
@@ -33,53 +49,15 @@ case "$PLATFORM" in
             -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN/Toolchain.cmake
         )
     fi
-    JOBS=$(getconf _NPROCESSORS_ONLN)
-    ;;
-  macosx)
-    JOBS=$(getconf _NPROCESSORS_ONLN)
     ;;
   freebsd*)
-    MAKE=gmake
     CMAKE_FLAGS+=(
       -DCMAKE_CXX_FLAGS="-U_XOPEN_SOURCE -UPOCO_HAVE_FD_EPOLL"
       -DCMAKE_C_FLAGS="-U_XOPEN_SOURCE"
     )
-    JOBS=$(sysctl -n hw.ncpu)
     ;;
   win*)
-    if [[ -z $CMAKE_GENERATOR ]]; then
-      case $VS_VERSION in
-        vs90)
-          CMAKE_GENERATOR="Visual Studio 9 2008"
-          ;;
-        vs100)
-          CMAKE_GENERATOR="Visual Studio 10 2010"
-          ;;
-        vs110)
-          CMAKE_GENERATOR="Visual Studio 11 2012"
-          ;;
-        vs120)
-          CMAKE_GENERATOR="Visual Studio 12 2013"
-          ;;
-        vs140)
-          CMAKE_GENERATOR="Visual Studio 14 2015"
-          ;;
-        vs150)
-          CMAKE_GENERATOR="Visual Studio 15 2017"
-          ;;
-        vs150sa)
-          CMAKE_GENERATOR="Visual Studio 15 2017"
-          ;;
-        *)
-          echo "Error: VS_VERSION not set"
-          exit 1
-      esac
-      if [[ $WIN_PLATFORM = x64 ]]; then
-        set CMAKE_GENERATOR="$CMAKE_GENERATOR Win64"
-      fi
-    fi
-    CMAKE_FLAGS=(
-      -G "$CMAKE_GENERATOR"
+    CMAKE_FLAGS+=(
       -DOPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/OpenSSL
       -DPOCO_MT=ON
     )
@@ -91,6 +69,10 @@ for build_type in Debug Release; do
     build_dir="cmake_build_${build_type}"
     [[ -d ${build_dir} ]] || mkdir ${build_dir}
     cd ${build_dir}
+    if [ "$(cat generator 2>/dev/null || true)" != "${MAKE}" ]; then
+        rm -rf *
+    fi
+    echo "${MAKE}" >  generator
     cmake .. \
       "${CMAKE_FLAGS[@]}" \
       -DCMAKE_BUILD_TYPE=${build_type} \
@@ -99,6 +81,6 @@ for build_type in Debug Release; do
           echo -DENABLE_$m=OFF; done) \
       -DPOCO_STATIC=1 \
       -DCMAKE_INSTALL_PREFIX="$(cd ..; pwd)/cmake_install_${build_type}"
-    MAKEFLAGS=-j${JOBS} cmake --build . --config "${build_type}" --target install
+   ${MAKE} install
   )
 done
