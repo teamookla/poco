@@ -3,10 +3,12 @@ import java.util.regex.Pattern
 def OPENSSL_VERSION = "1.1.1c"
 
 def agents = [
-  deb5_32bit:    [ label: 'nr-build32-deb5-1', toolchains: [
+  deb5_32bit:    [ label: 'native-deb5-64', toolchains: [
+    'gcc-6.3-deb5-multi.tar.gz': '/home/jenkins/toolchains',
     "openssl-${OPENSSL_VERSION}-deb5_32bit.tar.gz": "."
   ] ],
-  deb5_64bit:    [ label: 'nr-build64-deb5-1', toolchains: [
+  deb5_64bit:    [ label: 'native-deb5-64', toolchains: [
+    'gcc-6.3-x86_64_deb5-64.tgz': '/home/jenkins/toolchains',
     "openssl-${OPENSSL_VERSION}-deb5_64bit.tar.gz": "."
   ] ],
   deb8_64bit:    [ label: 'native-deb8-64', toolchains: [
@@ -15,26 +17,21 @@ def agents = [
   deb9_64bit:    [ label: 'native-deb9-64', toolchains: [
     "openssl-${OPENSSL_VERSION}-deb9_64bit.tar.gz": "."
   ] ],
-  freebsd32:     [ label: 'freebsd32-11', toolchains: [
-    "openssl-${OPENSSL_VERSION}-freebsd11_32bit.tar.gz": "."
-  ] ],
-  freebsd64:     [ label: 'freebsd-11', toolchains: [
+  freebsd64:     [ label: 'freebsd64-11', toolchains: [
     "openssl-${OPENSSL_VERSION}-freebsd11_64bit.tar.gz": "."
   ] ],
   macos:         [ label: 'macos', toolchains: [
     "openssl-${OPENSSL_VERSION}-macos.tar.gz": "."
   ] ],
-  win32:         [ label: 'aw-win-lab1', toolchains: [
+  win32:         [ label: 'windows-build-pool', toolchains: [
     "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
   ] ],
-  win64:         [ label: 'aw-win-lab1', toolchains: [
-    "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
+  win64:         [ label: 'windows-build-pool', toolchains: [
+    "openssl-${OPENSSL_VERSION}-win64.tar.gz": "."
   ] ],
 ]
 
 def builds = [
-  'freebsd32': [ agent: agents.freebsd32 ],
-  'freebsd64': [ agent: agents.freebsd64 ],
   'linux32':   [ agent: agents.deb5_32bit ],
   'linux64':   [ agent: agents.deb5_64bit ],
   'linux64-deb8':   [ agent: agents.deb8_64bit ],
@@ -72,7 +69,12 @@ def createBuildStage(name, definition) {
                       rm ${toolchain}
                     """
                   } else {
-                    sh "aws s3 cp s3://ookla-native-toolchains/${toolchain} - | tar xzf - -C ${dest}"
+                    sh """
+                      aws s3 cp --no-progress s3://ookla-native-toolchains/${toolchain} ${toolchain}
+                      [ -e ${dest} ] || mkdir -p ${dest}
+                      tar xzf ${toolchain} -C ${dest}
+                      rm ${toolchain}
+                    """
                   }
                 }
               }

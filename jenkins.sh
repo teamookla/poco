@@ -15,7 +15,7 @@ case "$PLATFORM" in
   linux*)
     case "$PLATFORM" in
       linux32)
-        TOOLCHAIN=/home/jenkins/toolchains/gcc-6.3-i686
+        TOOLCHAIN=/home/jenkins/toolchains/gcc-6.3-multi
         ;;
       linux64)
         TOOLCHAIN=/home/jenkins/toolchains/gcc-6.3-x86_64
@@ -24,13 +24,16 @@ case "$PLATFORM" in
         TOOLCHAIN=""
         ;;
     esac
-    if [[  $TOOLCHAIN != "" ]]; then 
+    if [[ $TOOLCHAIN != "" ]]; then
+        # Work around an optimizer bug on deb5.
+        RELEASE_BUILD_TYPE=MinSizeRel
         export LD_LIBRARY_PATH=$TOOLCHAIN/lib
         if [[ -d $TOOLCHAIN/lib64 ]]; then
             LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TOOLCHAIN/lib64
         fi
         CMAKE_FLAGS+=(
-            -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN/Toolchain.cmake
+            "-DCMAKE_C_FLAGS=-D_GLIBCXX_EXTERN_TEMPLATE=0"
+            "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN/Toolchain.cmake"
         )
     fi
     JOBS=$(getconf _NPROCESSORS_ONLN)
