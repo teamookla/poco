@@ -95,7 +95,7 @@ def createBuildStage(name, definition) {
               }
 
               def version = env.BRANCH_NAME
-              def m = Pattern.compile("${APPLICATION_NAME}-(\\d.\\d.\\d)").matcher(env.BRANCH_NAME)
+              def m = Pattern.compile("${APPLICATION_NAME}-(\\d+.\\d+.\\d+)").matcher(env.BRANCH_NAME)
               if (m.matches()) {
                 version = m.getAt(0)[1]
               }
