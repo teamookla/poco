@@ -5,6 +5,7 @@ env
 
 CONFIGURE_FLAGS=
 CMAKE_FLAGS=(
+  -DBUILD_SHARED_LIBS=off
   -DOPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/usr
 )
 MAKE=make
@@ -83,24 +84,49 @@ case "$PLATFORM" in
     fi
     CMAKE_FLAGS=(
       -G "$CMAKE_GENERATOR"
+      -DBUILD_SHARED_LIBS=off
       -DOPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/OpenSSL
       -DPOCO_MT=ON
     )
     ;;
 esac
 
+PACKAGES=(
+  CRYPTO
+  ENCODINGS
+  FOUNDATION
+  JSON
+  JWT
+  NET
+  NETSSL
+  UTIL
+  XML
+  ZIP
+)
+PACKAGES_RE=$(echo "^(${PACKAGES[@]})\$" | perl -pe 's/ /|/g')
 for build_type in Debug Release; do
   (
     build_dir="cmake_build_${build_type}"
     [[ -d ${build_dir} ]] || mkdir ${build_dir}
     cd ${build_dir}
+
+    CMAKE_PACKAGES=$(cmake .. "${CMAKE_FLAGS[@]}" -Wno-dev -LA | grep '^ENABLE' | cut -c8- | sed -e 's,:BOOL=, ,'; true)
+    CMAKE_PACKAGES_FLAGS=()
+    while IFS='\n' read line; do
+      {
+        read package enabled <<< "$line"
+        if [[ $enabled = ON ]] && [[ ! $package =~ $PACKAGES_RE ]]; then
+          CMAKE_PACKAGES_FLAGS+=("-DENABLE_$package=OFF")
+        elif [[ $enabled = OFF ]] && [[ $package =~ $PACKAGES_RE ]]; then
+          CMAKE_PACKAGES_FLAGS+=("-DENABLE_$package=ON")
+        fi
+      }
+    done <<< "${CMAKE_PACKAGES[@]}"
+
     cmake .. \
       "${CMAKE_FLAGS[@]}" \
       -DCMAKE_BUILD_TYPE=${build_type} \
-      $(for m in \
-          PDF MONGODB DATA PAGECOMPILER CPPPARSER APACHECONNECTOR SEVENZIP REDIS POCODOC; do \
-          echo -DENABLE_$m=OFF; done) \
-      -DPOCO_STATIC=1 \
+      "${CMAKE_PACKAGES_FLAGS[@]}" \
       -DCMAKE_INSTALL_PREFIX="$(cd ..; pwd)/cmake_install_${build_type}"
     MAKEFLAGS=-j${JOBS} cmake --build . --config "${build_type}" --target install
   )
