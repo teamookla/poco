@@ -20,6 +20,9 @@ def agents = [
   freebsd64:     [ label: 'freebsd64-11', toolchains: [
     "openssl-${OPENSSL_VERSION}-freebsd11_64bit.tar.gz": "."
   ] ],
+  freebsd12_64:     [ label: 'freebsd64-12', toolchains: [
+    "openssl-${OPENSSL_VERSION}-freebsd12_64bit.tar.gz": "."
+  ] ],
   macos:         [ label: 'macos', toolchains: [
     "openssl-${OPENSSL_VERSION}-macos.tar.gz": "."
   ] ],
@@ -32,14 +35,15 @@ def agents = [
 ]
 
 def builds = [
-  'linux32':   [ agent: agents.deb5_32bit ],
-  'linux64':   [ agent: agents.deb5_64bit ],
+  'linux32':        [ agent: agents.deb5_32bit ],
+  'linux64':        [ agent: agents.deb5_64bit ],
   'linux64-deb8':   [ agent: agents.deb8_64bit ],
   'linux64-deb9':   [ agent: agents.deb9_64bit ],
-  'freebsd64': [ agent: agents.freebsd64 ],
-  'macosx':    [ agent: agents.macos ],
-  'windows32': [ agent: agents.win32, winPlatform:'x86' ],
-  'windows64': [ agent: agents.win64, winPlatform:'x86' ],
+  'freebsd64':      [ agent: agents.freebsd64 ],
+  'freebsd12_64':   [ agent: agents.freebsd12_64 ],
+  'macosx':         [ agent: agents.macos ],
+  'windows32':      [ agent: agents.win32, winPlatform:'x86' ],
+  'windows64':      [ agent: agents.win64, winPlatform:'x86' ],
 ]
 
 def createBuildStages(builds) {
