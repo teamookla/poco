@@ -43,7 +43,7 @@ def builds = [
   'freebsd12_64':   [ agent: agents.freebsd12_64 ],
   'macosx':         [ agent: agents.macos ],
   'windows32':      [ agent: agents.win32, winPlatform:'x86' ],
-  'windows64':      [ agent: agents.win64, winPlatform:'x86' ],
+  'windows64':      [ agent: agents.win64, winPlatform:'x64' ],
 ]
 
 def createBuildStages(builds) {
