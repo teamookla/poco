@@ -8,8 +8,9 @@ env
 JENKINS_PLATFORM=${PLATFORM}
 
 rm -rf shared
-git clone --depth 1 git@github.com:teamookla/speedtest-sharedsuite.git shared
-
+#git clone --depth 1 git@github.com:teamookla/speedtest-sharedsuite.git shared
+git clone git@github.com:teamookla/speedtest-sharedsuite.git shared
+(cd shared && git checkout feature/POW-674/verify-hardening-flags-testing)
 . ./shared/build/ccache.sh
 
 CONFIGURE_FLAGS=
