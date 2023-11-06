@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.5.0)
 
+# Ookla Addition
+# Uncomment to enable verbose makefiles
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+#set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
+
 project(Poco)
 
 file(STRINGS "${PROJECT_SOURCE_DIR}/libversion" SHARED_LIBRARY_VERSION)
@@ -19,7 +24,6 @@ configure_ccache()
 message("--+ Toolchain information:")
 message("  +--> C Compiler: ${CMAKE_C_COMPILER}")
 message("  +--> CXX Compiler: ${CMAKE_CXX_COMPILER}")
-message("  +--> Environment CFLAGS: $ENV{CFLAGS}")
 
 enable_hardening_flags()
 ## END OOKLA CHANGES ##
@@ -228,6 +232,12 @@ option(POCO_NO_FORK_EXEC "Set to OFF|ON (default is OFF) to disable use of fork(
 
 if(POCO_NO_FORK_EXEC)
   add_definitions(-DPOCO_NO_FORK_EXEC=1)
+endif()
+
+# OOKLA CHANGES Disable Thread Name
+# This will only apply if DOOKLA_DISABLE_THREAD_NAME has been specified in the build/config file
+if(OOKLA_DISABLE_THREAD_NAME)
+	add_definitions(-DOOKLA_DISABLE_THREAD_NAME=1)
 endif()
 
 include(DefinePlatformSpecifc)
