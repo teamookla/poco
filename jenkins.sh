@@ -129,6 +129,7 @@ if [[ ${TOOLCHAIN_NAME} != none ]]; then
             -DCMAKE_TOOLCHAIN_FILE=../shared/cmake/select-toolchain.cmake
             -DTOOLCHAINS=${TOOLCHAINS}
             -DJENKINS_PLATFORM=${JENKINS_PLATFORM}
+            -DOOKLA_DISABLE_THREAD_NAME=1 # Disable thread naming for musl builds
         )
 fi
 

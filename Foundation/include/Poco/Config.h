@@ -56,6 +56,12 @@
 	#define POCO_THREAD_STACK_SIZE 0
 #endif
 
+// Uncomment define below to disable thread_name
+// calls on POSIX platforms.
+#ifndef OOKLA_DISABLE_THREAD_NAME
+// #define OOKLA_DISABLE_THREAD_NAME 1
+#endif
+
 
 // Define to override system-provided
 // minimum thread priority value on POSIX
