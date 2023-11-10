@@ -1,49 +1,30 @@
 import java.util.regex.Pattern
 
-def OPENSSL_VERSION = "1.1.1c"
+def OPENSSL_VERSION = "3.1.1"
 
 def agents = [
-  deb5_32bit:    [ label: 'native-deb5-64', toolchains: [
-    'gcc-6.3-deb5-multi.tar.gz': '/home/jenkins/toolchains',
-    "openssl-${OPENSSL_VERSION}-deb5_32bit.tar.gz": "."
-  ] ],
-  deb5_64bit:    [ label: 'native-deb5-64', toolchains: [
-    'gcc-6.3-x86_64_deb5-64.tgz': '/home/jenkins/toolchains',
-    "openssl-${OPENSSL_VERSION}-deb5_64bit.tar.gz": "."
-  ] ],
-  deb8_64bit:    [ label: 'native-deb8-64', toolchains: [
-    "openssl-${OPENSSL_VERSION}-deb8_64bit.tar.gz": "."
-  ] ],
-  deb9_64bit:    [ label: 'native-deb9-64', toolchains: [
-    "openssl-${OPENSSL_VERSION}-deb9_64bit.tar.gz": "."
-  ] ],
-  freebsd64:     [ label: 'freebsd64-11', toolchains: [
-    "openssl-${OPENSSL_VERSION}-freebsd11_64bit.tar.gz": "."
-  ] ],
-  freebsd12_64:     [ label: 'freebsd64-12', toolchains: [
-    "openssl-${OPENSSL_VERSION}-freebsd12_64bit.tar.gz": "."
-  ] ],
-  macos:         [ label: 'macos', toolchains: [
-    "openssl-${OPENSSL_VERSION}-macos.tar.gz": "."
-  ] ],
-  win32:         [ label: 'windows-build-pool', toolchains: [
-    "openssl-${OPENSSL_VERSION}-win32.tar.gz": "."
-  ] ],
-  win64:         [ label: 'windows-build-pool', toolchains: [
-    "openssl-${OPENSSL_VERSION}-win64.tar.gz": "."
-  ] ],
+  deb9_64bit:    [ label: 'native-deb9-64', ccache: true ],
+  freebsd13_64:  [ label: 'freebsd64-13', injectGHKey: true, ccache: true ], 
+  freebsd12_64:  [ label: 'freebsd64-12', injectGHKey: true, ccache: true ], 
+  macos:         [ label: 'macos' ], 
+  win32:         [ label: 'windows-build-pool' ], 
+  win64:         [ label: 'windows-build-pool' ]
+
 ]
 
 def builds = [
-  'linux32':        [ agent: agents.deb5_32bit ],
-  'linux64':        [ agent: agents.deb5_64bit ],
-  'linux64-deb8':   [ agent: agents.deb8_64bit ],
-  'linux64-deb9':   [ agent: agents.deb9_64bit ],
-  'freebsd64':      [ agent: agents.freebsd64 ],
-  'freebsd12_64':   [ agent: agents.freebsd12_64 ],
-  'macosx':         [ agent: agents.macos ],
-  'windows32':      [ agent: agents.win32, winPlatform:'x86' ],
-  'windows64':      [ agent: agents.win64, winPlatform:'x64' ],
+  'linux64-deb9':               [ agent: agents.deb9_64bit, openssl: 'deb9_64bit', toolchain: "none" ],
+  'linux-x86_64-static-musl':   [ agent: agents.deb9_64bit, openssl: "static-x86_64-musl", toolchain: 'static-musl-x86_64-linux-musl-gcc-11.4.0', 
+                                 CFLAGS: '-DOOKLA_DISABLE_THREAD_NAME=1' ],
+  // 'linux-x86-static-musl':      [ agent: agents.deb9_64bit, openssl: "static-i386-musl", toolchain: 'static-musl-i386-linux-musl', 
+  //                                CFLAGS: '-DOOKLA_DISABLE_THREAD_NAME=1' ],
+  'linux-aarch64-static-musl':  [ agent: agents.deb9_64bit, openssl: "static-aarch64-musl", toolchain: 'static-musl-aarch64-linux-musl-gcc-11.4.0', 
+                                 CFLAGS: '-DOOKLA_DISABLE_THREAD_NAME=1' ],
+  'freebsd12_64':   [ agent: agents.freebsd12_64, openssl: 'freebsd12_64bit', toolchain: "none" ],
+  'freebsd13_64':   [ agent: agents.freebsd13_64, openssl: 'freebsd13_64bit', toolchain: "none"],
+  'macosx':         [ agent: agents.macos, openssl: 'macos', toolchain: "none" ],
+  'windows32':      [ agent: agents.win32, winPlatform:'x86', openssl: 'win32', toolchain: "none" ],
+  'windows64':      [ agent: agents.win64, winPlatform:'x64', openssl: 'win64', toolchain: "none" ],
 ]
 
 def createBuildStages(builds) {
@@ -59,28 +40,41 @@ def createBuildStage(name, definition) {
       node(definition.agent.label) {
         ws("workspace/" + generateWorkspaceName("${env.APPLICATION_NAME}-${env.BRANCH_NAME}-${name}")) {
           checkout scm
+
+          def ccacheFile =  "none"
+          if(definition.agent.ccache ) {
+            ccacheFile = "poco-${name}-${definition.platform ?: definition.agent.label}-${definition.toolchain ?: name}-ccache.tgz"
+          }
+          
           withEnv([
             "PLATFORM=${definition.platform ?: name}",
+            "TOOLCHAIN_NAME=${definition.toolchain ?: name}",
+            "CFLAGS=${definition.CFLAGS ?:''}",
+            "CCACHE_FILE=${ccacheFile}",
           ]) {
+            if (definition.agent.injectGHKey) {
+              withCredentials([[
+                $class: 'SSHUserPrivateKeyBinding',
+                credentialsId: 'jenkins-ssh-key',
+                keyFileVariable: 'ID_RSA_FILE',
+              ]]) {
+                sh "rm -f ~/.ssh/id_rsa; cp \\${ID_RSA_FILE} ~/.ssh/id_rsa"
+              }  
+            
+            }
+            
             withAwsCredentials('jenkins-native-builds') {
-              if (definition.agent.toolchains) {
-                definition.agent.toolchains.each { toolchain, dest ->
-                  if (toolchain.endsWith('.zip')) {
-                    sh """
-                      aws s3 cp s3://ookla-native-toolchains/${toolchain} ${toolchain}
-                      [ -e ${dest} ] || mkdir -p ${dest}
-                      unzip -o ${toolchain} -d ${dest}
-                      rm ${toolchain}
+              sh """
+                      aws s3 cp --no-progress s3://ookla-native-toolchains/openssl-${OPENSSL_VERSION}-${definition.openssl}.tar.gz openssl.tgz
+                      tar xzf openssl.tgz
+                      rm openssl.tgz
                     """
-                  } else {
-                    sh """
-                      aws s3 cp --no-progress s3://ookla-native-toolchains/${toolchain} ${toolchain}
-                      [ -e ${dest} ] || mkdir -p ${dest}
-                      tar xzf ${toolchain} -C ${dest}
-                      rm ${toolchain}
+              if(definition.toolchain != 'none') {
+                sh """
+                      aws s3 cp --no-progress s3://ookla-native-toolchains/${definition.toolchain}.tgz toolchain.tgz
+                      tar xzf toolchain.tgz -C /home/jenkins/toolchains
+                      rm toolchain.tgz
                     """
-                  }
-                }
               }
 
               ['Debug', 'Release'].each { buildType ->
