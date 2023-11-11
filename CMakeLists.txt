@@ -12,6 +12,18 @@ string(REGEX REPLACE "[0-9]+\\.[0-9]+\\.([0-9]+).*" "\\1" CPACK_PACKAGE_VERSION_
 set(PROJECT_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
 set(RELEASE_NAME "Unstable-trunk")
 
+
+## OOKLA CHANGES ##
+include(shared/cmake/macros.cmake)
+configure_ccache()
+message("--+ Toolchain information:")
+message("  +--> C Compiler: ${CMAKE_C_COMPILER}")
+message("  +--> CXX Compiler: ${CMAKE_CXX_COMPILER}")
+message("  +--> Environment CFLAGS: $ENV{CFLAGS}")
+
+enable_hardening_flags()
+## END OOKLA CHANGES ##
+
 # Put the libaries and binaries that get built into directories at the
 # top of the build tree rather than in hard-to-find leaf
 # directories. This simplifies manual testing and the use of the build
@@ -50,11 +62,14 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 endif()
 
+# Enable standard installation directories
+include(GNUInstallDirs)
+
 # Include some common macros to simpilfy the Poco CMake files
 include(PocoMacros)
 
 if(POCO_STATIC)
-	message(WARNING "POCO_STATIC has been deprecated. Please use BUILD_SHARED_LIBS instead.")
+	message(WARNING "POCO_STATIC has been deprecated. Please use BUILD_SHARED_LIBS=NO to build static libraries.")
 	option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 else()
 	option(BUILD_SHARED_LIBS "Build shared libraries" ON)
@@ -75,6 +90,11 @@ if(MSVC)
 	if((NOT POCO_DISABLE_INTERNAL_OPENSSL) AND (ENABLE_NETSSL OR ENABLE_CRYPTO OR (ENABLE_DATA_MYSQL AND MINGW)))
 		include(UseEmbeddedOpenSSL)
 	endif()
+
+	if(POCO_SANITIZE_ASAN)
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
+	endif()
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:__cplusplus")
 endif()
 
 option(ENABLE_NETSSL_WIN "Enable NetSSL Windows" OFF)
@@ -134,11 +154,11 @@ else()
 endif()
 
 if(PostgreSQL_FOUND)
-	option(ENABLE_DATA "Enable SQL" ON)
-	option(ENABLE_DATA_POSTGRESQL "Enable SQL PosgreSQL" ON)
+	option(ENABLE_DATA "Enable Data" ON)
+	option(ENABLE_DATA_POSTGRESQL "Enable Data PosgreSQL" ON)
 else()
-	option(ENABLE_DATA "Enable SQL" OFF)
-	option(ENABLE_DATA_POSTGRESQL "Enable SQL PosgreSQL" OFF)
+	option(ENABLE_DATA "Enable Data" OFF)
+	option(ENABLE_DATA_POSTGRESQL "Enable Data PosgreSQL" OFF)
 endif()
 
 if(ENABLE_DATA_ODBC)
@@ -164,6 +184,7 @@ option(ENABLE_JSON "Enable JSON" ON)
 option(ENABLE_MONGODB "Enable MongoDB" ON)
 option(ENABLE_DATA_SQLITE "Enable Data SQlite" ON)
 option(ENABLE_REDIS "Enable Redis" ON)
+option(ENABLE_PROMETHEUS "Enable Prometheus" ON)
 option(ENABLE_PDF "Enable PDF" OFF)
 option(ENABLE_UTIL "Enable Util" ON)
 option(ENABLE_NET "Enable Net" ON)
@@ -174,6 +195,13 @@ option(ENABLE_CPPPARSER "Enable C++ parser" OFF)
 option(ENABLE_POCODOC "Enable Poco Documentation Generator" OFF)
 option(ENABLE_PAGECOMPILER "Enable PageCompiler" ON)
 option(ENABLE_PAGECOMPILER_FILE2PAGE "Enable File2Page" ON)
+
+option(ENABLE_ACTIVERECORD "Enable ActiveRecord" ON)
+option(ENABLE_ACTIVERECORD_COMPILER "Enable ActiveRecord Compiler" ON)
+
+if(ENABLE_ACTIVERECORD AND NOT ENABLE_DATA)
+  set(ENABLE_DATA ON CACHE BOOL "Enable Data" FORCE)
+endif()
 
 option(ENABLE_TESTS
 	"Set to OFF|ON (default is OFF) to control build of POCO tests & samples" OFF)
@@ -190,9 +218,16 @@ else()
 endif()
 
 if(POCO_UNBUNDLED)
-	message(STATUS "Using external sqlite, zlib, pcre, expat, ...")
+	message(STATUS "Using external sqlite, zlib, pcre2, expat, ...")
 else()
-	message(STATUS "Using internal sqlite, zlib, pcre, expat, ...")
+	message(STATUS "Using internal sqlite, zlib, pcre2, expat, ...")
+endif()
+
+# Disable fork exec
+option(POCO_NO_FORK_EXEC "Set to OFF|ON (default is OFF) to disable use of fork() and exec*() which are not allowed on some Apple platforms (iOS, watchOS, iPadOS, tvOS)." OFF)
+
+if(POCO_NO_FORK_EXEC)
+  add_definitions(-DPOCO_NO_FORK_EXEC=1)
 endif()
 
 include(DefinePlatformSpecifc)
@@ -204,10 +239,6 @@ if(ENABLE_TESTS)
 	add_subdirectory(CppUnit)
 	set(ENABLE_XML ON CACHE BOOL "Enable XML" FORCE)
 	set(ENABLE_JSON ON CACHE BOOL "Enable JSON" FORCE)
-
-	if(ENABLE_ZIP)
-		set(ENABLE_NET ON CACHE BOOL "Enable Net" FORCE)
-	endif()
 endif()
 
 if(ENABLE_ENCODINGS_COMPILER OR ENABLE_APACHECONNECTOR)
@@ -224,7 +255,7 @@ if(ENABLE_PAGECOMPILER)
 	set(ENABLE_UTIL ON CACHE BOOL "Enable Util" FORCE)
 endif()
 
-if(ENABLE_MONGODB OR ENABLE_REDIS)
+if(ENABLE_MONGODB OR ENABLE_REDIS OR ENABLE_PROMETHEUS)
 	set(ENABLE_NET ON CACHE BOOL "Enable Net" FORCE)
 endif()
 
@@ -237,6 +268,10 @@ if(ENABLE_DATA_SQLITE OR ENABLE_DATA_MYSQL OR ENABLE_DATA_ODBC OR ENABLE_DATA_PO
 endif()
 
 if(ENABLE_DATA AND ENABLE_TESTS)
+	set(ENABLE_DATA_SQLITE ON CACHE BOOL "Enable Data SQlite" FORCE)
+endif()
+
+if(ENABLE_ACTIVERECORD AND ENABLE_TESTS)
 	set(ENABLE_DATA_SQLITE ON CACHE BOOL "Enable Data SQlite" FORCE)
 endif()
 
@@ -274,11 +309,6 @@ if(ENABLE_POCODOC)
 	set(ENABLE_CPPPARSER ON CACHE BOOL "Enable C++ parser" FORCE)
 endif()
 
-if(ENABLE_SEVENZIP OR ENABLE_ZIP)
-	set(ENABLE_UTIL ON CACHE BOOL "Enable Util" FORCE)
-	set(ENABLE_XML ON CACHE BOOL "Enable XML" FORCE)
-endif()
-
 if(ENABLE_UTIL AND ENABLE_TESTS)
 	set(ENABLE_JSON ON CACHE BOOL "Enable JSON" FORCE)
 	set(ENABLE_XML ON CACHE BOOL "Enable XML" FORCE)
@@ -292,6 +322,7 @@ endif()
 if(ENABLE_FOUNDATION)
 	add_subdirectory(Foundation)
 endif()
+
 if(ENABLE_ENCODINGS)
 	add_subdirectory(Encodings)
 	list(APPEND Poco_COMPONENTS "Encodings")
@@ -327,6 +358,11 @@ if(EXISTS ${PROJECT_SOURCE_DIR}/Redis AND ENABLE_REDIS)
 	list(APPEND Poco_COMPONENTS "Redis")
 endif()
 
+if(EXISTS ${PROJECT_SOURCE_DIR}/Prometheus AND ENABLE_PROMETHEUS)
+	add_subdirectory(Prometheus)
+	list(APPEND Poco_COMPONENTS "Prometheus")
+endif()
+
 if(EXISTS ${PROJECT_SOURCE_DIR}/PDF AND ENABLE_PDF)
 	add_subdirectory(PDF)
 	list(APPEND Poco_COMPONENTS "PDF")
@@ -338,7 +374,6 @@ if(EXISTS ${PROJECT_SOURCE_DIR}/JWT AND ENABLE_JWT)
 endif()
 
 #NetSSL
-
 
 if(WIN32 AND EXISTS ${PROJECT_SOURCE_DIR}/NetSSL_Win AND ENABLE_NETSSL_WIN)
 	add_subdirectory(NetSSL_Win)
@@ -359,6 +394,16 @@ endif(OPENSSL_FOUND)
 if(EXISTS ${PROJECT_SOURCE_DIR}/Data AND ENABLE_DATA)
 	add_subdirectory(Data)
 	list(APPEND Poco_COMPONENTS "Data")
+endif()
+
+if(EXISTS ${PROJECT_SOURCE_DIR}/ActiveRecord AND ENABLE_ACTIVERECORD)
+	add_subdirectory(ActiveRecord)
+	list(APPEND Poco_COMPONENTS "ActiveRecord")
+endif()
+
+if(EXISTS ${PROJECT_SOURCE_DIR}/ActiveRecord/Compiler AND ENABLE_ACTIVERECORD_COMPILER)
+	add_subdirectory(ActiveRecord/Compiler)
+	list(APPEND Poco_COMPONENTS "ActiveRecordCompiler")
 endif()
 
 if(EXISTS ${PROJECT_SOURCE_DIR}/SevenZip AND ENABLE_SEVENZIP)
@@ -417,7 +462,9 @@ add_custom_target(uninstall
 #############################################################
 # Enable packaging
 
-include(InstallRequiredSystemLibraries)
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+	include(InstallRequiredSystemLibraries)
+endif()
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Poco Libraries")
 set(CPACK_PACKAGE_VENDOR "Applied Informatics Software Engineering GmbH")
@@ -443,7 +490,7 @@ write_basic_package_version_file(
 if(WIN32)
 	set(PocoConfigPackageLocation "cmake")
 else()
-	set(PocoConfigPackageLocation "lib${LIB_SUFFIX}/cmake/${PROJECT_NAME}")
+	set(PocoConfigPackageLocation "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 endif()
 
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/${PROJECT_NAME}Config.cmake" @ONLY)
@@ -458,7 +505,7 @@ install(
 )
 
 if(POCO_UNBUNDLED)
-	install(FILES cmake/FindPCRE.cmake
+	install(FILES cmake/FindPCRE2.cmake
 			DESTINATION "${PocoConfigPackageLocation}")
 	install(FILES cmake/V39/FindEXPAT.cmake
 			DESTINATION "${PocoConfigPackageLocation}/V39")
@@ -477,13 +524,13 @@ message(STATUS "[cmake] Installation target path: ${CMAKE_INSTALL_PREFIX}")
 if(CMAKE_TOOLCHAIN_FILE)
 	message(STATUS "[cmake] Use toolchain file:		${CMAKE_TOOLCHAIN_FILE}")
 endif()
-message(STATUS "[cmake] Bulid for OS type:		${CMAKE_SYSTEM_NAME}")
-message(STATUS "[cmake] Build for OS version:	${CMAKE_SYSTEM_VERSION}")
-message(STATUS "[cmake] Build for CPU type:		${CMAKE_SYSTEM_PROCESSOR}")
-message(STATUS "[cmake] Build type:				${CMAKE_BUILD_TYPE}")
+message(STATUS "[cmake] Build for OS type:      ${CMAKE_SYSTEM_NAME}")
+message(STATUS "[cmake] Build for OS version:   ${CMAKE_SYSTEM_VERSION}")
+message(STATUS "[cmake] Build for CPU type:     ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "[cmake] Build type:             ${CMAKE_BUILD_TYPE}")
 string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE)
-message(STATUS "[cmake] Build with cxx flags:	${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${CMAKE_CXX_FLAGS}")
-message(STATUS "[cmake] Build with c flags:		${CMAKE_C_FLAGS_${BUILD_TYPE}} ${CMAKE_C_FLAGS}")
+message(STATUS "[cmake] Build with cxx flags:   ${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${CMAKE_CXX_FLAGS}")
+message(STATUS "[cmake] Build with c flags:     ${CMAKE_C_FLAGS_${BUILD_TYPE}} ${CMAKE_C_FLAGS}")
 
 foreach(component ${Poco_COMPONENTS})
 	message(STATUS "Building: ${component}")
