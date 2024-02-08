@@ -556,9 +556,9 @@ int SecureSocketImpl::handleError(int rc)
 	// SSL_ERROR_SSL with a meaningful error on the error stack.
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	case SSL_ERROR_SSL:
-#else
-	case SSL_ERROR_SYSCALL:
 #endif
+	case SSL_ERROR_SYSCALL:
+
 		if (socketError)
 		{
 			SocketImpl::error(socketError);
