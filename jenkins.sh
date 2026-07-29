@@ -54,45 +54,14 @@ case "$PLATFORM" in
         )
         ;;
     win*)
-        if [[ -z $CMAKE_GENERATOR ]]; then
-            case $VS_VERSION in
-                vs90)
-                    CMAKE_GENERATOR="Visual Studio 9 2008"
-                    ;;
-                vs100)
-                    CMAKE_GENERATOR="Visual Studio 10 2010"
-                    ;;
-                vs110)
-                    CMAKE_GENERATOR="Visual Studio 11 2012"
-                    ;;
-                vs120)
-                    CMAKE_GENERATOR="Visual Studio 12 2013"
-                    ;;
-                vs140)
-                    CMAKE_GENERATOR="Visual Studio 14 2015"
-                    ;;
-                vs150)
-                    CMAKE_GENERATOR="Visual Studio 15 2017"
-                    ;;
-                vs150sa)
-                    CMAKE_GENERATOR="Visual Studio 15 2017"
-                    ;;
-                *)
-                    echo "Error: VS_VERSION not set"
-                    exit 1
-            esac
-            if [[ $WIN_PLATFORM = x64 ]]; then
-                set CMAKE_GENERATOR="$CMAKE_GENERATOR Win64"
-            fi
-        fi
+        unset CMAKE_GENERATOR CMAKE_GENERATOR_PLATFORM CMAKE_GENERATOR_TOOLSET
         CMAKE_FLAGS=(
-            -G "$CMAKE_GENERATOR"
             -DBUILD_SHARED_LIBS=off
             -DOPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/OpenSSL
             -DPOCO_MT=ON
         )
         ;;
-    mac*) 
+    mac*)
         CMAKE_FLAGS+=(
             '-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64'
             '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.11'
@@ -123,7 +92,7 @@ PACKAGES=(
 PACKAGES_RE=$(echo "^(${PACKAGES[@]})\$" | perl -pe 's/ /|/g')
 
 # Check for cross-compiler toolchain.
-if [[ ${TOOLCHAIN_NAME} != none ]]; then 
+if [[ ${TOOLCHAIN_NAME} != none ]]; then
         JENKINS_PLATFORM="${TOOLCHAIN_NAME}"
         CMAKE_FLAGS+=(
             -DCMAKE_TOOLCHAIN_FILE=../shared/cmake/select-toolchain.cmake

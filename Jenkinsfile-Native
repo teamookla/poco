@@ -1,9 +1,10 @@
 import java.util.regex.Pattern
 
-def OPENSSL_VERSION = "3.3.1"
+def OPENSSL_VERSION = "3.5.5"
 
 def agents = [
   deb11_64bit:   [ label: 'native-deb11-64', ccache: true ],
+  freebsd13_64:  [ label: 'freebsd64-13', injectGHKey: true, ccache: true ],
   macos:         [ label: 'macos' ],
   win32:         [ label: 'windows-build-pool' ],
   win64:         [ label: 'windows-build-pool' ]
@@ -12,6 +13,7 @@ def agents = [
 def builds = [
   'linux-x86_64-static-musl':   [ agent: agents.deb11_64bit, openssl: "static-x86_64-musl", toolchain: 'static-musl-x86_64-linux-musl-gcc-11.4.0' ],
   'linux-aarch64-static-musl':  [ agent: agents.deb11_64bit, openssl: "static-aarch64-musl", toolchain: 'static-musl-aarch64-linux-musl-gcc-11.4.0' ],
+  'freebsd13_64':   [ agent: agents.freebsd13_64, openssl: 'freebsd13_64bit', toolchain: "none" ],
   'macosx':         [ agent: agents.macos, openssl: 'macos', toolchain: "none" ],
   'windows32':      [ agent: agents.win32, winPlatform:'x86', openssl: 'win32', toolchain: "none" ],
   'windows64':      [ agent: agents.win64, winPlatform:'x64', openssl: 'win64', toolchain: "none" ],
@@ -35,7 +37,7 @@ def createBuildStage(name, definition) {
           if(definition.agent.ccache ) {
             ccacheFile = "poco-${name}-${definition.platform ?: definition.agent.label}-${definition.toolchain ?: name}-ccache.tgz"
           }
-          
+
           withEnv([
             "PLATFORM=${definition.platform ?: name}",
             "TOOLCHAIN_NAME=${definition.toolchain ?: name}",
@@ -48,10 +50,10 @@ def createBuildStage(name, definition) {
                 keyFileVariable: 'ID_RSA_FILE',
               ]]) {
                 sh "rm -f ~/.ssh/id_rsa; cp \\${ID_RSA_FILE} ~/.ssh/id_rsa"
-              }  
-            
+              }
+
             }
-            
+
             withAwsCredentials('jenkins-native-builds') {
               sh """
                       aws s3 cp --no-progress s3://ookla-native-toolchains/openssl-${OPENSSL_VERSION}-${definition.openssl}.tar.gz openssl.tgz
