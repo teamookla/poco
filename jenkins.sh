@@ -3,21 +3,30 @@
 set -Eeuxo pipefail
 env
 
-
 : "${TOOLCHAINS:=}"
+: "${FREEBSD_JAIL:=}"
+: "${IN_FREEBSD_JAIL:=}"
 JENKINS_PLATFORM=${PLATFORM}
 
-rm -rf shared
-git clone --depth 1 git@github.com:teamookla/speedtest-sharedsuite.git shared
+if [[ -z $IN_FREEBSD_JAIL ]]; then
+    rm -rf shared
+    git clone --depth 1 git@github.com:teamookla/speedtest-sharedsuite.git shared
+fi
+
+if [[ -n $FREEBSD_JAIL ]]; then
+    exec ./jenkins-freebsd-jail.sh
+fi
 
 . ./shared/build/ccache.sh
 
 CONFIGURE_FLAGS=
+OPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/usr
 CMAKE_FLAGS=(
   -DBUILD_SHARED_LIBS=off
-  -DOPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/usr
+  -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
 )
 MAKE=make
+TOOLCHAIN_FILE=../shared/cmake/select-toolchain.cmake
 
 echo "Testing platform $PLATFORM"
 case "$PLATFORM" in
@@ -52,6 +61,15 @@ case "$PLATFORM" in
             -DCMAKE_CXX_FLAGS="-U_XOPEN_SOURCE -UPOCO_HAVE_FD_EPOLL"
             -DCMAKE_C_FLAGS="-U_XOPEN_SOURCE"
         )
+        if [[ $PLATFORM == *-arm64 ]]; then
+            TOOLCHAIN_FILE=../cmake/OoklaFreeBSDCross.cmake
+            CMAKE_FLAGS+=(
+                -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
+                -DTOOLCHAINS=${TOOLCHAINS:-/home/jenkins/toolchains}
+                -DJENKINS_PLATFORM=${JENKINS_PLATFORM}
+                -DOOKLA_FIND_ROOTS=${OPENSSL_ROOT_DIR}
+            )
+        fi
         ;;
     win*)
         unset CMAKE_GENERATOR CMAKE_GENERATOR_PLATFORM CMAKE_GENERATOR_TOOLSET
@@ -95,7 +113,7 @@ PACKAGES_RE=$(echo "^(${PACKAGES[@]})\$" | perl -pe 's/ /|/g')
 if [[ ${TOOLCHAIN_NAME} != none ]]; then
         JENKINS_PLATFORM="${TOOLCHAIN_NAME}"
         CMAKE_FLAGS+=(
-            -DCMAKE_TOOLCHAIN_FILE=../shared/cmake/select-toolchain.cmake
+            -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
             -DTOOLCHAINS=${TOOLCHAINS}
             -DJENKINS_PLATFORM=${JENKINS_PLATFORM}
             -DOOKLA_DISABLE_THREAD_NAME=1 # Disable thread naming for musl builds
@@ -126,7 +144,7 @@ for build_type in Debug Release; do
     cmake .. \
       "${CMAKE_FLAGS[@]}" \
        ${CMAKE_EXTRA} \
-       -DCMAKE_TOOLCHAIN_FILE=../shared/cmake/select-toolchain.cmake \
+       -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
        -DTOOLCHAINS=${TOOLCHAINS}  -DJENKINS_PLATFORM=${JENKINS_PLATFORM} \
       -DCMAKE_BUILD_TYPE=${build_type} \
       "${CMAKE_PACKAGES_FLAGS[@]}" \
