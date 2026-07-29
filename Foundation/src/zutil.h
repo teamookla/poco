@@ -137,7 +137,12 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  endif
 #endif
 
-#if defined(MACOS) || defined(TARGET_OS_MAC)
+/* Ookla: this branch targets classic Mac OS, but recent macOS SDKs define
+ * TARGET_OS_MAC via TargetConditionals.h (pulled in transitively by <stdlib.h>),
+ * so it also fired on Darwin -- defining fdopen() to NULL and breaking the
+ * <stdio.h> declaration of fdopen(). Exclude Darwin; the __APPLE__ block below
+ * already sets OS_CODE 19 there. */
+#if defined(MACOS) && !defined(__APPLE__)
 #  define OS_CODE  7
 #  ifndef Z_SOLO
 #    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os
