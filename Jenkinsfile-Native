@@ -1,9 +1,10 @@
 import java.util.regex.Pattern
 
-def OPENSSL_VERSION = "3.5.5"
+def OPENSSL_VERSION = "3.5.8"
+MUSL_GCC_VERSION = "15.1"
 
 def agents = [
-  deb11_64bit:   [ label: 'native-deb11-64', ccache: true ],
+  deb13_64bit:   [ label: 'native-deb13-64' ],
   freebsd_jail:  [ label: 'freebsd-jail', injectGHKey: true, ccache: true ],
   macos:         [ label: 'macos' ],
   win32:         [ label: 'windows-build-pool' ],
@@ -11,8 +12,8 @@ def agents = [
 ]
 
 def builds = [
-  'linux-x86_64-static-musl':   [ agent: agents.deb11_64bit, openssl: "static-x86_64-musl", toolchain: 'static-musl-x86_64-linux-musl-gcc-11.4.0' ],
-  'linux-aarch64-static-musl':  [ agent: agents.deb11_64bit, openssl: "static-aarch64-musl", toolchain: 'static-musl-aarch64-linux-musl-gcc-11.4.0' ],
+  'linux-x86_64-static-musl':   [ agent: agents.deb13_64bit, openssl: "static-x86_64-musl", toolchain: 'static-musl-x86_64-linux-musl' ],
+  'linux-aarch64-static-musl':  [ agent: agents.deb13_64bit, openssl: "static-aarch64-musl", toolchain: 'static-musl-aarch64-linux-musl' ],
   'freebsd14-x86_64':           [ agent: agents.freebsd_jail, platform: 'freebsd14-x86_64', openssl: 'freebsd14-x86_64',
                                   toolchain: "none", jail: 'fbsd14'],
   'freebsd15-x86_64':           [ agent: agents.freebsd_jail, platform: 'freebsd15-x86_64', openssl: 'freebsd15-x86_64',
@@ -40,14 +41,20 @@ def createBuildStage(name, definition) {
         ws("workspace/" + generateWorkspaceName("${env.APPLICATION_NAME}-${env.BRANCH_NAME}-${name}")) {
           checkout scm
 
+          def isMuslToolchain = definition.toolchain?.startsWith('static-musl-')
+          def toolchainTag = isMuslToolchain ? "${definition.toolchain}-gcc-${MUSL_GCC_VERSION}"
+                                             : (definition.toolchain ?: name)
+
           def ccacheFile =  "none"
           if(definition.agent.ccache ) {
-            ccacheFile = "poco-${name}-${definition.platform ?: definition.agent.label}-${definition.toolchain ?: name}-ccache.tgz"
+            ccacheFile = "poco-${name}-${definition.platform ?: definition.agent.label}-${toolchainTag}-ccache.tgz"
           }
 
           withEnv([
             "PLATFORM=${definition.platform ?: name}",
+            "JENKINS_PLATFORM=${definition.platform ?: name}",
             "TOOLCHAIN_NAME=${definition.toolchain ?: name}",
+            "MUSL_GCC_VERSION=${MUSL_GCC_VERSION}",
             "CCACHE_FILE=${ccacheFile}",
             "FREEBSD_JAIL=${definition.jail ?: ''}",
           ]) {
@@ -69,8 +76,10 @@ def createBuildStage(name, definition) {
                       rm openssl.tgz
                     """
               if(definition.toolchain != 'none') {
+                def s3prefix = isMuslToolchain ? "musl-gcc-${MUSL_GCC_VERSION}/" : ""
                 sh """
-                      aws s3 cp --no-progress s3://ookla-native-toolchains/${definition.toolchain}.tgz toolchain.tgz
+                      aws s3 cp --no-progress s3://ookla-native-toolchains/${s3prefix}${definition.toolchain}.tgz toolchain.tgz
+                      mkdir -p /home/jenkins/toolchains
                       tar xzf toolchain.tgz -C /home/jenkins/toolchains
                       rm toolchain.tgz
                     """
@@ -86,9 +95,14 @@ def createBuildStage(name, definition) {
               }
 
               if (isUnix()) {
-                sh 'PATH=$PATH:/opt/cmake-3.11.4/bin exec ./jenkins.sh'
+                // Poco 1.15.3 requires cmake >= 3.26 (cmake_minimum_required in
+                // CMakeLists.txt); the agent's cmake must satisfy that. The old
+                // /opt/cmake-3.11.4/bin PATH entry was dropped -- it was appended
+                // after $PATH so it never took effect, and 3.11.4 is now too old
+                // to configure the project at all.
+                sh 'exec ./jenkins.sh'
               } else {
-                msvcBat "set PLATFORM=${definition.platform ?: name} & sh ./jenkins.sh", [winPlatform: definition.winPlatform]
+                msvcBat '"c:/Program Files/Git/bin/bash.exe" -x ./jenkins.sh', [winPlatform: definition.winPlatform]
               }
 
               def version = env.BRANCH_NAME
