@@ -4,9 +4,11 @@ set -Eeuxo pipefail
 env
 
 : "${TOOLCHAINS:=}"
+: "${MUSL_GCC_VERSION:=}"
 : "${FREEBSD_JAIL:=}"
 : "${IN_FREEBSD_JAIL:=}"
-JENKINS_PLATFORM=${PLATFORM}
+: "${JENKINS_PLATFORM:=${PLATFORM}}"
+PLATFORM="${JENKINS_PLATFORM}"
 
 if [[ -z $IN_FREEBSD_JAIL ]]; then
     rm -rf shared
@@ -19,48 +21,30 @@ fi
 
 . ./shared/build/ccache.sh
 
-CONFIGURE_FLAGS=
 OPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/usr
-CMAKE_FLAGS=(
+
+# Flags that must be identical on every platform. The win* arm below rebuilds
+# CMAKE_FLAGS from scratch (the Windows OpenSSL tarball has a different prefix),
+# so anything that has to hold everywhere belongs here rather than inline.
+#
+# ENABLE_FASTLOGGER / ENABLE_TRACE are new in 1.15.x and default ON / OFF. They
+# pull in the bundled Quill and cpptrace respectively; Ookla ships neither, and
+# Quill is the only thing in the tree that needs a macOS deployment target
+# newer than 10.15. Pin both so the artifact does not change under us.
+COMMON_FLAGS=(
   -DBUILD_SHARED_LIBS=off
+  -DENABLE_FASTLOGGER=OFF
+  -DENABLE_TRACE=OFF
+)
+CMAKE_FLAGS=(
+  "${COMMON_FLAGS[@]}"
   -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
 )
-MAKE=make
 TOOLCHAIN_FILE=../shared/cmake/select-toolchain.cmake
 
 echo "Testing platform $PLATFORM"
 case "$PLATFORM" in
-    linux*)
-        case "$PLATFORM" in
-            linux32)
-                TOOLCHAIN=/home/jenkins/toolchains/gcc-6.3-multi
-                ;;
-            linux64)
-                TOOLCHAIN=/home/jenkins/toolchains/gcc-6.3-x86_64
-                ;;
-            *)
-                TOOLCHAIN=""
-                ;;
-        esac
-        if [[ $TOOLCHAIN != "" ]]; then
-            # Work around an optimizer bug on deb5.
-            RELEASE_BUILD_TYPE=MinSizeRel
-            export LD_LIBRARY_PATH=$TOOLCHAIN/lib
-            if [[ -d $TOOLCHAIN/lib64 ]]; then
-                LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TOOLCHAIN/lib64
-            fi
-            CMAKE_FLAGS+=(
-                "-DCMAKE_C_FLAGS=-D_GLIBCXX_EXTERN_TEMPLATE=0"
-                "-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN/Toolchain.cmake"
-            )
-        fi
-        ;;
     freebsd*)
-        MAKE=gmake
-        CMAKE_FLAGS+=(
-            -DCMAKE_CXX_FLAGS="-U_XOPEN_SOURCE -UPOCO_HAVE_FD_EPOLL"
-            -DCMAKE_C_FLAGS="-U_XOPEN_SOURCE"
-        )
         if [[ $PLATFORM == *-arm64 ]]; then
             TOOLCHAIN_FILE=../cmake/OoklaFreeBSDCross.cmake
             CMAKE_FLAGS+=(
@@ -74,12 +58,16 @@ case "$PLATFORM" in
     win*)
         unset CMAKE_GENERATOR CMAKE_GENERATOR_PLATFORM CMAKE_GENERATOR_TOOLSET
         CMAKE_FLAGS=(
-            -DBUILD_SHARED_LIBS=off
+            "${COMMON_FLAGS[@]}"
             -DOPENSSL_ROOT_DIR=$(pwd)/openssl-${OPENSSL_VERSION}/OpenSSL
             -DPOCO_MT=ON
         )
         ;;
     mac*)
+        # Poco 1.15.4 defaults CMAKE_OSX_DEPLOYMENT_TARGET to 15.0; we override it
+        # back to 10.11. That only builds with ENABLE_FASTLOGGER=OFF (see
+        # COMMON_FLAGS) -- Quill needs >= 10.15 for aligned new/delete and
+        # std::filesystem::path.
         CMAKE_FLAGS+=(
             '-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64'
             '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.11'
@@ -116,7 +104,10 @@ if [[ ${TOOLCHAIN_NAME} != none ]]; then
             -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
             -DTOOLCHAINS=${TOOLCHAINS}
             -DJENKINS_PLATFORM=${JENKINS_PLATFORM}
-            -DOOKLA_DISABLE_THREAD_NAME=1 # Disable thread naming for musl builds
+            # Generic static-musl-* toolchain files resolve
+            # ${TOOLCHAINS}/cross/<target>-gcc-${MUSL_GCC_VERSION}; without this the path
+            # ends in a bare "gcc-" and compiler detection fails.
+            -DMUSL_GCC_VERSION=${MUSL_GCC_VERSION}
         )
 fi
 

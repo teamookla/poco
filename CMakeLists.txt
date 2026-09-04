@@ -346,12 +346,6 @@ if(POCO_NO_FORK_EXEC)
 	add_definitions(-DPOCO_NO_FORK_EXEC=1)
 endif()
 
-# OOKLA CHANGES Disable Thread Name
-# This will only apply if DOOKLA_DISABLE_THREAD_NAME has been specified in the build/config file
-if(OOKLA_DISABLE_THREAD_NAME)
-	add_definitions(-DOOKLA_DISABLE_THREAD_NAME=1)
-endif()
-
 option(POCO_ENABLE_STD_MUTEX "Set to OFF|ON (default is OFF) to implement Poco::Mutex and Poco::FastMutex with std::recursive_mutex and std::mutex" OFF)
 
 if(ENABLE_TRACE)
