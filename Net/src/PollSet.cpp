@@ -17,6 +17,7 @@
 #include "Poco/Mutex.h"
 #include "Poco/IOLock.h"
 #include <set>
+#include <cstring>
 
 
 #if defined(POCO_HAVE_FD_EPOLL)
