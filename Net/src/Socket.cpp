@@ -413,5 +413,12 @@ void Socket::error()
 	SocketImpl::error();
 }
 
+bool Socket::poll(const Poco::Timespan& timeout, int mode) const
+{
+	POCO_CHECK_NEW_STATE_ON_MOVE;
+
+	return _pImpl->poll(timeout, mode);
+}
+
 
 } } // namespace Poco::Net

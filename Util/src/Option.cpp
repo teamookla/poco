@@ -42,7 +42,8 @@ Option::Option(const Option& option):
 	_binding(option._binding),
 	_pValidator(option._pValidator),
 	_pCallback(option._pCallback),
-	_pConfig(option._pConfig)
+    _pConfig(option._pConfig),
+    _hidden(option._hidden)
 {
 	if (_pValidator) _pValidator->duplicate();
 	if (_pCallback) _pCallback = _pCallback->clone();
@@ -108,6 +109,7 @@ void Option::swap(Option& option) noexcept
 	std::swap(_pValidator, option._pValidator);
 	std::swap(_pCallback, option._pCallback);
 	std::swap(_pConfig, option._pConfig);
+    std::swap(_hidden, option._hidden);
 }
 
 
@@ -195,6 +197,12 @@ Option& Option::validator(Validator* pValidator)
 	if (_pValidator) _pValidator->release();
 	_pValidator = pValidator;
 	return *this;
+}
+
+Option& Option::hidden(bool flag)
+{
+    _hidden = flag;
+    return *this;
 }
 
 

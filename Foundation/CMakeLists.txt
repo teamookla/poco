@@ -122,10 +122,6 @@ target_compile_definitions(Foundation
 		$<$<CONFIG:Debug>:_DEBUG>
 		$<$<BOOL:${POCO_ENABLE_CPP20}>:POCO_ENABLE_CPP20>
 )
-target_compile_features(Foundation
-	PUBLIC
-		$<$<NOT:$<BOOL:${DISABLE_CPP11}>>:cxx_defaulted_move_initializers>
-)
 
 #
 # Set target C++ standard compile features for exported target.

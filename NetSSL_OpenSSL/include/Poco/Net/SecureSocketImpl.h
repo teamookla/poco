@@ -163,12 +163,16 @@ public:
 		/// underlying TCP connection. No orderly SSL shutdown
 		/// is performed.
 
+    bool poll(const Poco::Timespan& timeout, int mode);
+
 	int sendBytes(const void* buffer, int length, int flags = 0);
 		/// Sends the contents of the given buffer through
 		/// the socket. Any specified flags are ignored.
 		///
 		/// Returns the number of bytes sent, which may be
 		/// less than the number of bytes specified.
+
+    int peekBytes(void* buffer, int length, int flags);
 
 	int receiveBytes(void* buffer, int length, int flags = 0);
 		/// Receives data from the socket and stores it
