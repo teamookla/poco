@@ -14,6 +14,7 @@
 
 #include "Poco/Zip/PartialStream.h"
 #include "Poco/Exception.h"
+#include <algorithm>
 #include <cstring>
 
 

@@ -17,6 +17,7 @@
 #include "Poco/Net/NetException.h"
 #include "Poco/Ascii.h"
 #include "Poco/NumberParser.h"
+#include <algorithm>
 #include <limits>
 
 using namespace std::string_literals;
