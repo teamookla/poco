@@ -19,6 +19,7 @@
 #include "Poco/ErrorHandler.h"
 #include "Poco/Format.h"
 #include "Poco/Error.h"
+#include <algorithm>
 #include <signal.h>
 #include <limits.h>
 

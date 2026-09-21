@@ -18,6 +18,7 @@
 #include "Poco/Zip/ZipDataInfo.h"
 #include "Poco/Zip/ZipFileInfo.h"
 #include "Poco/Exception.h"
+#include <algorithm>
 #include <cstring>
 
 
