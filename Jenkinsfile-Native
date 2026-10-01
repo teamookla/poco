@@ -1,6 +1,6 @@
 import java.util.regex.Pattern
 
-def OPENSSL_VERSION = "3.5.8"
+def OPENSSL_VERSION = "3.5.9"
 MUSL_GCC_VERSION = "15.1"
 
 def agents = [
